@@ -2,6 +2,7 @@
 <html>
   <head>
     <title>2. Dezember</title>
+  <link rel="stylesheet" href="https://mam-mam.net/css/inc.css" />
   </head>
   <script>
 	  function pruefeWalkman() {
@@ -28,7 +29,7 @@
         document.getElementById("frage3").value.trim().toLowerCase()
     ];
 
-    // Teilbegriffe bzw. erlaubte Wörter
+    // Teilbegriffe bzw. erlaubte WÃ¶rter
     const richtig = [
         antworten[0].includes("parsons"),
         antworten[1].includes("raj"),
@@ -36,7 +37,7 @@
             .some(wort => antworten[2].includes(wort))
     ];
 
-    // Rückmeldung für jede einzelne Antwort
+    // RÃ¼ckmeldung fÃ¼r jede einzelne Antwort
     const rueckmeldung = richtig.map((istRichtig, i) =>
         "Frage " + (i + 1) + ": " +
         (istRichtig ? "? Richtig!" : "? Noch nicht richtig.")
@@ -56,7 +57,7 @@
 
 	  </script>
   <body>
-  Zweiter Dezember ... und neben dem Ausgang aus dem Labyrinth findest Du eine Kassette. Geh Mann, hättest Du Doch jetzt bloß Deinen alten ...
+  Zweiter Dezember ... und neben dem Ausgang aus dem Labyrinth findest Du eine Kassette.<br> Geh Mann, hÃ¤ttest Du Doch jetzt bloÃŸ Deinen alten ...
 	<label for="walkmanAntwort">
 	  Was fehlt Dir?
 	</label>
@@ -69,7 +70,7 @@
 	>
 
 	<button type="button" onclick="pruefeWalkman()">
-	  Antwort prüfen
+	  Antwort prÃ¼fen
 	</button>
 
 	<p id="walkmanFehler" style="color: #b00020; display: none;">
@@ -78,19 +79,19 @@
 
 	<div id="walkmanHinweis" style="display: none; margin-top: 15px;">
 	  <p>
-		Genau! Welch ein Glück: Du schaust im Felsspalt rechts von Dir nach und da liegt tatsächlich ein alter Walkman mit vollen Batterien. Du legst die Kassette ein ...
+		Genau! Welch ein GlÃ¼ck: Du schaust im Felsspalt rechts von Dir nach und da liegt tatsÃ¤chlich ein alter Walkman mit vollen Batterien. Du legst die Kassette ein ...
 	  </p>
 	  <p>
 		<audio controls>
 		<source src="audiohinweis.mp3" type="audio/mpeg">
-		Ihr Browser unterstützt das Audio-Element nicht.
+		Ihr Browser unterstÃ¼tzt das Audio-Element nicht.
 		</audio>
 	  </p>
       <details id="fragenBereich" style="margin-top: 20px;">
         <summary>Hm ... und was sollst Du jetzt damit anfangen?</summary>
 		<p>Ah, innen am magischen Kassettencover findest Du noch drei Fragen</p>
 
-        <p>1. Welchen Schauspieler hörst Du hier singen?</p>
+        <p>1. Welchen Schauspieler hÃ¶rst Du hier singen?</p>
         <label for="frage1">Antwort:</label>
         <input type="text" id="frage1" autocomplete="off">
 
@@ -104,19 +105,19 @@
 
         <p>
           <button type="button" onclick="pruefeFragen()">
-            Antworten prüfen
+            Antworten prÃ¼fen
           </button>
         </p>
 		<p id="fragenStatus" aria-live="polite"></p>
 		
         <p id="fragenFehler" style="display:none; color:#b00020;">
-          Noch nicht ganz richtig. Überprüfe deine drei Antworten!
+          Noch nicht ganz richtig. ÃœberprÃ¼fe deine drei Antworten!
         </p>
 
         <div id="naechsterHinweis" style="display:none;">
           <p><strong>Alle drei Antworten sind richtig!</strong></p>
           <p>Das magische Cover verwandelt sich hell schillernd und Du kannst einen Code erkennen: C-4</p>
-		  <p>Solltest Du Dir den vielleicht wieder auf allen Zetteln auf der Rückseite notieren?</p>
+		  <p>Solltest Du Dir den vielleicht wieder auf allen Zetteln auf der RÃ¼ckseite notieren?</p>
         </div>
       </details>
 	</div>  
