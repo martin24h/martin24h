@@ -349,12 +349,6 @@
     );
     mctx.closePath();
     mctx.stroke();
-	let posText = document.getElementById("cameraPosition");
-
-posText.textContent =
-    "X: " + camera.position.x.toFixed(3) +
-    " | Y: " + camera.position.y.toFixed(3) +
-    " | Z: " + camera.position.z.toFixed(3);
   }
   //???????
   function createMaze(){
@@ -413,7 +407,7 @@ raus und nicht den ganzen Advent hier verbringen. Daher: mach Dich auf den Weg u
 
       <canvas id="can" style="width:1000px; height:600px; max-width:calc(100vw - 36px);max-height:calc((100vw - 36px) * 600 / 1000);margin:0;padding:0;cursor:grab;touch-action:none;" width="1000" height="600"></canvas>
       <br>
-	<details id="mazeHint" style="margin-top: 80px;">
+	<details id="mazeHint" style="margin-top: 800px;">
 	  <summary style="
 		font-size: 11px;
 		color: #aaa;
@@ -423,15 +417,6 @@ raus und nicht den ganzen Advent hier verbringen. Daher: mach Dich auf den Weg u
 
 	<div style="max-width: 100%; margin-top: 10px;">	  <canvas id="maze" style="width:210px;height:210px;" width="210" height="210"></canvas> 
       <br>
-		<div id="cameraPosition" style="
-			font-family: monospace;
-			font-size: 16px;
-			padding: 8px;
-			background: #eeeeee;
-			color: #222222;
-		">
-			Position: wird geladen ...
-		</div>
 	</div>
 	</details>
     </section>
