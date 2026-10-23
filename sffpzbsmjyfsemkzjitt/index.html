@@ -3,7 +3,122 @@
   <head>
     <title>2. Dezember</title>
   </head>
+  <script>
+	  function pruefeWalkman() {
+		const eingabe = document.getElementById("walkmanAntwort")
+			.value.trim().toLowerCase();
+
+		const hinweis = document.getElementById("walkmanHinweis");
+		const fehler = document.getElementById("walkmanFehler");
+
+		if (eingabe === "walkman") {
+			hinweis.style.display = "block";
+			fehler.style.display = "none";
+		} else {
+			fehler.style.display = "block";
+			hinweis.style.display = "none";
+		}
+	}
+
+
+	function pruefeFragen() {
+    const antworten = [
+        document.getElementById("frage1").value.trim().toLowerCase(),
+        document.getElementById("frage2").value.trim().toLowerCase(),
+        document.getElementById("frage3").value.trim().toLowerCase()
+    ];
+
+    // Teilbegriffe bzw. erlaubte Wörter
+    const richtig = [
+        antworten[0].includes("parsons"),
+        antworten[1].includes("raj"),
+        ["gestorben", "verloren", "ausgeschieden", "tod"]
+            .some(wort => antworten[2].includes(wort))
+    ];
+
+    // Rückmeldung für jede einzelne Antwort
+    const rueckmeldung = richtig.map((istRichtig, i) =>
+        "Frage " + (i + 1) + ": " +
+        (istRichtig ? "? Richtig!" : "? Noch nicht richtig.")
+    );
+
+    document.getElementById("fragenStatus").innerHTML =
+        rueckmeldung.join("<br>");
+
+    const alleRichtig = richtig.every(Boolean);
+
+    document.getElementById("fragenFehler").style.display =
+        alleRichtig ? "none" : "block";
+
+    document.getElementById("naechsterHinweis").style.display =
+        alleRichtig ? "block" : "none";
+}
+
+	  </script>
   <body>
-  2. Dezember
+  Zweiter Dezember ... und neben dem Ausgang aus dem Labyrinth findest Du eine Kassette. Geh Mann, hättest Du Doch jetzt bloß Deinen alten ...
+	<label for="walkmanAntwort">
+	  Was fehlt Dir?
+	</label>
+
+	<input
+	  type="text"
+	  id="walkmanAntwort"
+	  placeholder="Deine Antwort ..."
+	  autocomplete="off"
+	>
+
+	<button type="button" onclick="pruefeWalkman()">
+	  Antwort prüfen
+	</button>
+
+	<p id="walkmanFehler" style="color: #b00020; display: none;">
+	  Das ist es leider nicht. Versuch es noch einmal!
+	</p>
+
+	<div id="walkmanHinweis" style="display: none; margin-top: 15px;">
+	  <p>
+		Genau! Welch ein Glück: Du schaust im Felsspalt rechts von Dir nach und da liegt tatsächlich ein alter Walkman mit vollen Batterien. Du legst die Kassette ein ...
+	  </p>
+	  <p>
+		<audio controls>
+		<source src="audiohinweis.mp3" type="audio/mpeg">
+		Ihr Browser unterstützt das Audio-Element nicht.
+		</audio>
+	  </p>
+      <details id="fragenBereich" style="margin-top: 20px;">
+        <summary>Hm ... und was sollst Du jetzt damit anfangen?</summary>
+		<p>Ah, innen am magischen Kassettencover findest Du noch drei Fragen</p>
+
+        <p>1. Welchen Schauspieler hörst Du hier singen?</p>
+        <label for="frage1">Antwort:</label>
+        <input type="text" id="frage1" autocomplete="off">
+
+        <p>2. Welche Figur fehlt in der Runde?</p>
+        <label for="frage2">Antwort:</label>
+        <input type="text" id="frage2" autocomplete="off">
+
+        <p>3. ... und warum?</p>
+        <label for="frage3">Antwort:</label>
+        <input type="text" id="frage3" autocomplete="off">
+
+        <p>
+          <button type="button" onclick="pruefeFragen()">
+            Antworten prüfen
+          </button>
+        </p>
+		<p id="fragenStatus" aria-live="polite"></p>
+		
+        <p id="fragenFehler" style="display:none; color:#b00020;">
+          Noch nicht ganz richtig. Überprüfe deine drei Antworten!
+        </p>
+
+        <div id="naechsterHinweis" style="display:none;">
+          <p><strong>Alle drei Antworten sind richtig!</strong></p>
+          <p>Das magische Cover verwandelt sich hell schillernd und Du kannst einen Code erkennen: C-4</p>
+		  <p>Solltest Du Dir den vielleicht wieder auf allen Zetteln auf der Rückseite notieren?</p>
+        </div>
+      </details>
+	</div>  
   </body>
 </html>
