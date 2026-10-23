@@ -168,18 +168,11 @@
 */
 
     //?????????
-    tx[0]=new THREE.TextureLoader().load("https://mam-mam.net/en/javascript/three_r145/img/grass.jpg",
-			function (texture) {
-				console.log("Textur erfolgreich geladen:", texture);
-			},
-			undefined,
-			function (error) {
-				console.error("Fehler beim Laden der Textur:", error);
-    });
+    tx[0]=new THREE.TextureLoader().load("https://martin24h.github.io/martin24h/wzlybcmueacmdnasccyf/grass.jpg");
     tx[0].wrapS = THREE.RepeatWrapping;
     tx[0].wrapT = THREE.RepeatWrapping;
     tx[0].repeat.set( 32, 32 );
-    tx[1]=new THREE.TextureLoader().load("https://mam-mam.net/en/javascript/three_r145/img/stone.jpg");
+    tx[1]=new THREE.TextureLoader().load("https://martin24h.github.io/martin24h/wzlybcmueacmdnasccyf/stone.jpg");
     tx[1].wrapS = THREE.RepeatWrapping;
     tx[1].wrapT = THREE.RepeatWrapping;
     tx[1].repeat.set( 2, 2 );
@@ -387,11 +380,10 @@
   <main>
 
     <section>
-<h2 class="diag">Create a Maze and Display it in 3D | Walk Through the Maze with Mouse or Tap (Three.js[r145])</h2>
-<p class="normal">
-  Explore a 3D maze in your browser!<br>
-  This interactive content generates a realistic 3D maze with Three.js, allowing a walk-through experience.<br>
-  The maze is created using the "stick-falling" algorithm, combining a 2D map with 3D visualization for visual enjoyment.<br>
+<p class="normal">Erster Dezember ... und Du hast ein Déjà-vu ... schon wieder immer Labyrinth - OH NEEEEIIIIIN!<br>
+Aber immerhin sieht es freundlichen aus, blauer Himmel, grünes Gras, helle Wände ... fast zum Wohlfühlen. Doch lieber willst Du 
+raus und nicht den ganzen Advent hier verbringen. Daher: mach Dich auf den Weg und finde den am Boden blau markierten Ausgang. 
+
   The green circle marks the start point, the blue circle marks the goal. You are represented by a red icon, and your objective is to escape the maze!<br>
 </p>
 
@@ -400,6 +392,7 @@
 </p>
       <canvas id="can" style="width:1000px; height:600px; max-width:calc(100vw - 36px);max-height:calc((100vw - 36px) * 600 / 1000);margin:0;padding:0;cursor:grab;touch-action:none;" width="1000" height="600"></canvas>
       <br>
+	  <img src="https://martin24h.github.io/martin24h/wzlybcmueacmdnasccyf/grass.jpg", width="3000px"><br>
 	  <canvas id="maze" style="width:210px;height:210px;" width="210" height="210"></canvas> 
       <br>
     </section>
