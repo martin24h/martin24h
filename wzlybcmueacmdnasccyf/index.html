@@ -1,9 +1,403 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>1.12.2026</title>
-  </head>
-  <body>
-  1.12.2026
-  </body>
+<html lang="en">
+<head>
+    <link rel="canonical" href="https://mam-mam.net/en/javascript/three_js_maze.html" />
+
+  <meta charset="UTF-8">
+
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+
+  <link rel="stylesheet" href="https://mam-mam.net/css/inc.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script src="https://mam-mam.net/js/mamimageviewer.js"></script>
+<script>
+  window.addEventListener('load',function(){
+    document.getElementsByTagName('main')[0].addEventListener('click',function(){});
+  });
+</script>
+  <title>1. Dezember ... nicht schon wieder ...</title>
+
+  <script src="https://mam-mam.net/en/javascript/three_r145/three.min.js"></script>
+<!--
+  <script src="./three_r145/OrbitControls.js"></script>
+  <script src="./three_r145/loaders/OBJLoader.js"></script>
+  <script src="./three_r145/loaders/MTLLoader.js"></script>
+-->
+<style>
+  pre.fblack{background:black;color:#FFF;padding:0.5em;}
+  pre.fgray{background:#F4F4F4;color:#000;padding:0.5em;}
+  code{font-weight:bold;font-size:0.9em;color:#333;}
+  table{border-collapse:collapse;}
+  td,th{border:1px solid #AAA;}
+  .fred{color:red;font-weight:bold;}
+  .fblue{color:blue;font-weight:bold;}
+  .forange{color:orange;font-weight:bold;}
+</style>
+<script>
+  var gobj=null;
+  var mesh=Array();
+  var controls;//?????
+  var tx=[];//?????
+  var mat=[];//?????
+  var pointLight;
+  var box=[];
+  var spot;
+  var maze=[],mazel=2*10;//????
+  var mouse={x:0,y:0};
+  var move=0;
+ 
+  function mdown(x,y){
+      let s=window.getComputedStyle(can);
+      let ww=parseInt(s.width);
+      let hh=parseInt(s.height);
+      mouse.x=x;
+      mouse.y=y;
+      if(mouse.x!=0 && (mouse.x-ww)!=0){
+        if(hh/ww<mouse.y/mouse.x){
+          if((hh/-ww)<mouse.y/(mouse.x-ww)){
+            move=4;/*?*/
+          }else{
+            move=3;/*?*/
+          }
+        }else{
+          if((hh/-ww)<mouse.y/(mouse.x-ww)){
+            move=1;/*?*/
+          }else{
+            move=2;/*?*/
+          }
+        }
+      }
+  }
+ 
+  function main() {
+    createMaze();
+    let can=document.getElementById('can');
+    let w = parseInt(can.style.width);//???
+    let h = parseInt(can.style.height);//????
+    can.addEventListener("mousedown",function(){
+      if(move!=0){return;}
+      mdown(event.offsetX,event.offsetY);
+    });
+    can.addEventListener("touchstart",function(){
+      if(move!=0){return;}
+      let rect = event.target.getBoundingClientRect();
+      let offsetX = (event.touches[0].pageX - window.pageXOffset - rect.left)
+      let offsetY = (event.touches[0].pageY - window.pageYOffset - rect.top)
+      mdown(offsetX,offsetY);
+    },{passive:false});
+    can.addEventListener("mousemove",function(){
+      if(move==0){return;}
+      mdown(event.offsetX,event.offsetY);
+    });
+    can.addEventListener("touchmove",function(){
+      if(move==0){return;}
+      let rect = event.target.getBoundingClientRect();
+      let offsetX = (event.touches[0].pageX - window.pageXOffset - rect.left)
+      let offsetY = (event.touches[0].pageY - window.pageYOffset - rect.top)
+      mdown(offsetX,offsetY);
+    },{passive:false});
+    can.addEventListener("mouseup",function(){
+      mouse.x=0;
+      mouse.y=0;
+      move=0;
+    });
+    window.addEventListener("mouseup",function(){
+      mouse.x=0;
+      mouse.y=0;
+      move=0;
+    });
+    can.addEventListener("touchend",function(){
+      event.preventDefault();
+      mouse.x=0;
+      mouse.y=0;
+      move=0;
+    },{passive:false});
+
+    //??????
+    scene = new THREE.Scene();
+
+    //?????????
+    camera = new THREE.PerspectiveCamera(70, w/h, 0.0001, mazel*10 );
+    camera.position.set( 1, 0.5, 1 );
+    camera.rotation.y=-Math.PI/1;
+    scene.add(camera);
+
+    //??????DOM??????
+    renderer = new THREE.WebGLRenderer({canvas:can , antialias: true});//?????????ture???
+    renderer.setSize( w, h );
+    renderer.shadowMap.enabled = true;//???
+    //THREE.BasicShadowMap,THREE.PCFShadowMap (default),THREE.PCFSoftShadowMap, THREE.VSMShadowMap
+    //renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.setClearColor(0x99CCFF,1);
+
+    //??------------------------------------------------
+    //???(???????????????????)??????????????????????
+    var AmbientLight=new THREE.AmbientLight(0xffffff,0.8);
+    scene.add( AmbientLight );
+
+
+    //???????               ?,??,??(distance),??(angle),??[0-1],??[1,2]
+    //var spot=new THREE.SpotLight(0xffffff,Math.PI*2,280,Math.PI/2,0.6,2);
+    //???????            ?,     ??,??(distance),??(angle),??[0-1],??[1,1.5]
+    spot=new THREE.SpotLight(0xffffff, 4, 200,Math.PI/8, 0.2, 2);
+    spot.position.set(40,60,30);
+    spot.target.position.set(10,-30,10);
+    spot.castShadow=true;//???????
+    spot.shadow.mapSize.width = 4096;  //????????
+    spot.shadow.mapSize.height = 4096; //????????
+    spot.shadow.radius=4;
+    //spot.shadow.bias=-0.001;
+    scene.add(spot);
+    scene.add(spot.target);
+
+    //??????????????????
+    //const spotLightHelper = new THREE.SpotLightHelper(spot, 0xffffff);
+    //scene.add(spotLightHelper);
+/*
+    // ??????  (?, ????, ??, ?????[?????????2.0??????1.0])
+    pointLight = new THREE.PointLight(0xffffff, 2.0, 1000, 1.0);
+    pointLight.position.set(-100,400,200);
+    pointLight.castShadow=true;//???????
+    pointLight.shadow.mapSize.width = 4096;  //????????
+    pointLight.shadow.mapSize.height = 4096; //????????
+    pointLight.shadow.radius=30;
+    //pointLight.shadow.bias=-0.001;
+    scene.add(pointLight);
+    //???????????????
+    const pointLightHelper = new THREE.PointLightHelper(pointLight, 30);
+    scene.add(pointLightHelper);
+*/
+
+    //?????????
+    tx[0]=new THREE.TextureLoader().load("https://mam-mam.net/en/javascript/three_r145/img/grass.jpg");
+    tx[0].wrapS = THREE.RepeatWrapping;
+    tx[0].wrapT = THREE.RepeatWrapping;
+    tx[0].repeat.set( 32, 32 );
+    tx[1]=new THREE.TextureLoader().load("https://mam-mam.net/en/javascript/three_r145/img/stone.jpg");
+    tx[1].wrapS = THREE.RepeatWrapping;
+    tx[1].wrapT = THREE.RepeatWrapping;
+    tx[1].repeat.set( 2, 2 );
+    mat[0]=new THREE.MeshLambertMaterial({color:0xaaaaaa, map:tx[0],});
+    mat[1]=new THREE.MeshLambertMaterial({color:0xaaaaaa, map:tx[1],});
+    mat[2]=new THREE.MeshLambertMaterial({color:0x339933});
+    mat[3]=new THREE.MeshLambertMaterial({color:0x333399});
+
+    //???????
+    //?,??,????,?????
+    var plane = new THREE.PlaneGeometry(30, 30, 10, 10);
+    var mesh_ground = new THREE.Mesh( plane, mat[0]);
+    mesh_ground.rotation.x = - Math.PI/2;
+    mesh_ground.position.set( 10, 0, 10 );
+    mesh_ground.castShadow=true;//?????
+    mesh_ground.receiveShadow=true;//?????
+    scene.add( mesh_ground );
+
+    var ring=new THREE.RingGeometry(0,0.5,32);
+    var meshs=new THREE.Mesh(ring,mat[2]);
+    meshs.rotation.x=-Math.PI/2;
+    meshs.position.set(1,0.01,1);
+    meshs.castShadow=true;
+    meshs.receiveShadow=true;
+    scene.add(meshs);
+
+    meshe=new THREE.Mesh(ring,mat[3]);
+    meshe.rotation.x=-Math.PI/2;
+    meshe.position.set(mazel-1,0.01,mazel-1);
+    meshe.castShadow=true;
+    meshe.receiveShadow=true;
+    scene.add(meshe);
+
+
+    let bgeo=new THREE.BoxGeometry(1,1);
+    for(let x=0;x<=mazel;x++){
+      box[x]=[];
+      for(let y=0;y<=mazel;y++){
+        if(maze[x][y]==1){
+        box[x][y]=new THREE.Mesh(bgeo,mat[1]);
+        box[x][y].position.set(x,0.5,y);
+        box[x][y].castShadow=true;
+        box[x][y].receiveShadow=true;
+        scene.add(box[x][y]);
+        }
+      }
+    }
+
+
+    //controls = new THREE.OrbitControls(camera, renderer.domElement);  
+    //controls.target.set(1,0.5,2);
+    //controls.update();
+
+    //???????????(?????)
+    //controls.enablePan=false;
+    //controls.enabled=false;
+    renderLoop();
+  };
+
+  //???
+  function renderLoop () {
+    //console.log(camera.rotation.y);
+    if(move==0){
+      can.style.cursor="grab";
+    }else if(move==1){
+      can.style.cursor="zoom-in";
+      let mv={x:Math.cos(camera.rotation.y-Math.PI/2)*0.02,y:Math.sin(camera.rotation.y-Math.PI/2)*0.02};
+      let newp1={x:camera.position.x-mv.x,y:camera.position.z+mv.y};
+      let newp2={x:camera.position.x-mv.x,y:camera.position.z};
+      let newp3={x:camera.position.x,y:camera.position.z+mv.y};
+      if(!collision(newp1.x,newp1.y)){
+        camera.position.x=newp1.x;
+        camera.position.z=newp1.y;
+      }else if(!collision(newp2.x,newp2.y)){
+        camera.position.x=newp2.x;
+        camera.position.z=newp2.y;
+      }else if(!collision(newp3.x,newp3.y)){
+        camera.position.x=newp3.x;
+        camera.position.z=newp3.y;
+      }
+    }else if(move==2){
+      can.style.cursor="ew-resize";
+      camera.rotation.y-=Math.PI/180;
+    }else if(move==3){
+      can.style.cursor="zoom-out";
+      let mv={x:Math.cos(camera.rotation.y-Math.PI/2)*0.02,y:Math.sin(camera.rotation.y-Math.PI/2)*0.02};
+      let newp={x:camera.position.x+mv.x,y:camera.position.z-mv.y};
+      if(!collision(newp.x,newp.y)){
+        camera.position.x=newp.x;
+        camera.position.z=newp.y;
+      }
+    }else if(move==4){
+      can.style.cursor="ew-resize";
+      camera.rotation.y+=Math.PI/180;
+    }
+    drawMaze();
+    requestAnimationFrame( renderLoop );
+    //?????????(?????)??????(???????)?????(???????????)?????
+    renderer.render( scene, camera );
+  }
+
+  window.addEventListener( 'DOMContentLoaded', main, false );
+
+  function collision(xx,yy){
+    let m=1/2+1/16;
+    for(let x=0;x<=mazel;x++){
+      for(let y=0;y<=mazel;y++){
+        if(maze[x][y]==1){
+          if(xx>=(x-m)&&xx<=(x+m)&&yy>=(y-m)&&yy<=(y+m)){
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  //????????
+  function drawMaze(){
+    let mcan=document.getElementById("maze");
+    mcan.setAttribute("width",(mazel+1)*10);
+    mcan.setAttribute("height",(mazel+1)*10);
+    let mctx=mcan.getContext("2d", {willReadFrequently:true});
+    mctx.fillStyle="white";
+    mctx.fillRect(0,0,mazel*10+10,mazel*10+10);
+    mctx.fillStyle="black";
+    for(let x=0;x<maze.length;x++){
+      for(let y=0;y<maze[x].length;y++){
+        if(maze[x][y]==1){
+          mctx.fillRect(x*10,y*10,10,10);
+        }
+      }
+    }
+    mctx.beginPath();
+    mctx.fillStyle="#339933";
+    mctx.arc(15,15,4,0,Math.PI*2,false);
+    mctx.fill();
+    mctx.beginPath();
+    mctx.fillStyle="#333399";
+    mctx.arc((mazel-1)*10+5,(mazel-1)*10+5,5,0,Math.PI*2,false);
+    mctx.fill();
+    mctx.beginPath();
+    mctx.fillStyle="red";
+    mctx.arc(camera.position.x*10+5,camera.position.z*10+5,2,0,Math.PI*2,false);
+    mctx.fill();
+
+    mctx.beginPath();
+    mctx.lineWidth=2;
+    mctx.strokeStyle="red";
+    mctx.moveTo(camera.position.x*10+5,camera.position.z*10+5);
+    mctx.lineTo(
+      camera.position.x*10+5-Math.cos(camera.rotation.y-Math.PI/2)*8,
+      camera.position.z*10+5+Math.sin(camera.rotation.y-Math.PI/2)*8
+    );
+    mctx.closePath();
+    mctx.stroke();
+  }
+  //???????
+  function createMaze(){
+    //????
+    for(let x=0;x<=mazel;x++){
+      maze[x]=[];
+      for(let y=0;y<=mazel;y++){
+        maze[x][y]=0;
+      }
+    }
+    for(let x=0;x<=mazel;x++){
+      maze[x][0]=1;
+      maze[x][mazel]=1;
+    }
+    for(let y=0;y<=mazel;y++){
+      maze[0][y]=1;
+      maze[maze.length-1][y]=1;
+    }
+    for(let x=2;x<(mazel-1);x+=2){
+      for(let y=2;y<(mazel-1);y+=2){
+        maze[x][y]=1;
+        while(true){
+          let rr=0;//0:? 1:? 2:? 3:?
+          let xx=x,yy=y;
+          if(y==2){
+            rr=parseInt(Math.random()*4);
+          }else{
+            rr=parseInt(Math.random()*3)+1;
+          }
+          if(rr==0){yy--;}
+          if(rr==1){xx++;}
+          if(rr==2){yy++;}
+          if(rr==3){xx--;}
+          if(maze[xx][yy]==0){
+            maze[xx][yy]=1;
+            break;
+          }
+        }
+      }
+    }
+  }
+</script>
+
+</head>
+<body>
+  <header>
+ 
+  </header>
+  <main>
+
+    <section>
+<h2 class="diag">Create a Maze and Display it in 3D | Walk Through the Maze with Mouse or Tap (Three.js[r145])</h2>
+<p class="normal">
+  Explore a 3D maze in your browser!<br>
+  This interactive content generates a realistic 3D maze with Three.js, allowing a walk-through experience.<br>
+  The maze is created using the "stick-falling" algorithm, combining a 2D map with 3D visualization for visual enjoyment.<br>
+  The green circle marks the start point, the blue circle marks the goal. You are represented by a red icon, and your objective is to escape the maze!<br>
+</p>
+
+<p class="normal">
+  On the canvas: hold down the left mouse button (long tap) at the top to move forward, hold on the left side to rotate left, hold on the right side to rotate right, and hold at the bottom to move backward.
+</p>
+      <canvas id="can" style="width:1000px; height:600px; max-width:calc(100vw - 36px);max-height:calc((100vw - 36px) * 600 / 1000);margin:0;padding:0;cursor:grab;touch-action:none;" width="1000" height="600"></canvas>
+      <br>
+	  <canvas id="maze" style="width:210px;height:210px;" width="210" height="210"></canvas> 
+      <br>
+    </section>
+  </main>
+</body>
 </html>
