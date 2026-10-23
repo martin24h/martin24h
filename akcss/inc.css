@@ -119,7 +119,7 @@ html, body {
                "Hiragino Sans", "Meiryo UI", "ãƒ¡ã‚¤ãƒªã‚ª", Meiryo,
                "ï¼­ï¼³ ï¼°ã‚´ã‚·ãƒƒã‚¯", "Helvetica Neue", Arial, sans-serif;
   font-size: var(--font-base);
-  word-break: break-all;
+  word-break: normal;
   word-wrap: break-word;
   box-sizing: border-box;
   -webkit-text-size-adjust: 100%;
@@ -634,7 +634,7 @@ ul.bullets > li > a:link,
 ul.bullets > li > a:visited {
   color: var(--color-text);
   text-decoration: none;
-  word-break: break-all;
+  word-break: normal;
   word-wrap: break-word;
   overflow: hidden;
   width: 100%;
@@ -659,7 +659,7 @@ ul.bullets > li > a p:not(:first-child) {
 ul.bullets > li > a > div:only-child {
   padding: 0;
   margin: 0;
-  word-break: break-all;
+  word-break: normal;
   word-wrap: break-word;
   overflow: hidden;
   width: 100%;
@@ -683,7 +683,7 @@ ul.bullets > li > a h5 {
   margin: 0;
   font-weight: bold;
   color: var(--color-text);
-  word-break: break-all;
+  word-break: normal;
   word-wrap: break-word;
   overflow: hidden;
   width: 100%;
