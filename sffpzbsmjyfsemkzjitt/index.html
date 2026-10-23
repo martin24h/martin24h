@@ -4,7 +4,17 @@
     <title>2. Dezember</title>
   <link rel="stylesheet" href="https://martin24h.github.io/martin24h/akcss/inc.css" />
   </head>
-  <script>
+ <style>
+  pre.fblack{background:black;color:#FFF;padding:0.5em;}
+  pre.fgray{background:#F4F4F4;color:#000;padding:0.5em;}
+  code{font-weight:bold;font-size:0.9em;color:#333;}
+  table{border-collapse:collapse;}
+  td,th{border:1px solid #AAA;}
+  .fred{color:red;font-weight:bold;}
+  .fblue{color:blue;font-weight:bold;}
+  .forange{color:orange;font-weight:bold;}
+</style>
+ <script>
 	  function pruefeWalkman() {
 		const eingabe = document.getElementById("walkmanAntwort")
 			.value.trim().toLowerCase();
@@ -61,7 +71,7 @@
  
   </header>
   <main>
-      <section style="font-size: 14pt;">
+      <section>
 	<p>
   Zweiter Dezember ... und neben dem Ausgang aus dem Labyrinth findest Du eine Kassette.<br> Geh Mann, hättest Du Doch jetzt bloß Deinen alten ...
 	<label for="walkmanAntwort">
