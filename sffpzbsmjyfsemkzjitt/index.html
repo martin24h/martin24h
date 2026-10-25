@@ -44,14 +44,14 @@
     const richtig = [
         antworten[0].includes("parsons"),
         antworten[1].includes("raj"),
-        ["gestorben", "verloren", "ausgeschieden", "tod"]
+        ["gestorben", "verloren", "ausgeschieden", "tod", "stirbt", "verliert", "scheidet"]
             .some(wort => antworten[2].includes(wort))
     ];
 
     // Rückmeldung für jede einzelne Antwort
     const rueckmeldung = richtig.map((istRichtig, i) =>
         "Frage " + (i + 1) + ": " +
-        (istRichtig ? "? Richtig!" : "? Noch nicht richtig.")
+        (istRichtig ? "Bravo!" : "Äh ... nein.")
     );
 
     document.getElementById("fragenStatus").innerHTML =
@@ -110,32 +110,33 @@
         <summary>Hm ... und was sollst Du jetzt damit anfangen?</summary>
 		<p>Ah, innen am magischen Kassettencover findest Du noch drei Fragen</p>
 
-        <p>1. Welchen Schauspieler hörst Du hier singen?</p>
+        <p>Welchen Schauspieler hörst Du hier singen?</p>
         <label for="frage1">Antwort:</label>
         <input type="text" id="frage1" autocomplete="off">
 
-        <p>2. Welche Figur fehlt in der Runde?</p>
+        <p>Welche Figur fehlt in der Runde?</p>
         <label for="frage2">Antwort:</label>
         <input type="text" id="frage2" autocomplete="off">
 
-        <p>3. ... und warum?</p>
+        <p>... und warum?</p>
         <label for="frage3">Antwort:</label>
         <input type="text" id="frage3" autocomplete="off">
 
         <p>
           <button type="button" onclick="pruefeFragen()">
-            Antworten prüfen
+            Hauche das magische Cover an. 
           </button>
         </p>
+		  <p id="fragenFehler" style="display:none; color:#b00020;">
+			  Hm, das magische Cover verfärbt sich rötlich. Das dürfte noch nicht richtig sein. 
+			</p>	
 		<p id="fragenStatus" aria-live="polite"></p>
 		
-        <p id="fragenFehler" style="display:none; color:#b00020;">
-          Noch nicht ganz richtig. Überprüfe deine drei Antworten!
-        </p>
+  
 
         <div id="naechsterHinweis" style="display:none;">
-          <p><strong>Alle drei Antworten sind richtig!</strong></p>
-          <p>Das magische Cover verwandelt sich hell schillernd und Du kannst einen Code erkennen: C-4</p>
+          <p><strong>Bravo! Alle drei Antworten sind richtig!</strong></p>
+          <p>Das magische Cover verwandelt sich hell grün schillernd und Du kannst einen Code erkennen: C-4</p>
 		  <p>Solltest Du Dir den vielleicht wieder auf allen Zetteln auf der Rückseite notieren?</p>
         </div>
       </details>

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>3. Dezember</title>
+  <link rel="stylesheet" href="https://martin24h.github.io/martin24h/akcss/inc.css" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #edf3f9;
+      color: #172c48;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 18px;
+      line-height: 1.5;
+    }
+
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .karte {
+      background: #fff;
+      border: 1px solid #c7d9ed;
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 18px;
+      box-shadow: 0 3px 12px #173c5d12;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      color: #174b83;
+      font-size: clamp(26px, 6vw, 36px);
+      line-height: 1.2;
+    }
+
+    h2 {
+      font-size: 22px;
+      margin: 0 0 14px;
+      color: #174b83;
+    }
+
+    .untertitel {
+      margin-top: 0;
+      color: #52677e;
+    }
+
+    .song {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 100px;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid #dce6f0;
+    }
+
+    .song:last-child {
+      border-bottom: none;
+    }
+
+    .song audio {
+      display: block;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .songnummer {
+      display: block;
+      font-size: 13px;
+      color: #61758b;
+      margin-bottom: 5px;
+    }
+
+    .jahr {
+      width: 100%;
+      min-width: 0;
+      height: 48px;
+      border: 2px solid #b8cce2;
+      border-radius: 8px;
+      background: #f9fbfe;
+      color: #172c48;
+      text-align: center;
+      font: inherit;
+      font-size: 20px;
+      letter-spacing: 3px;
+    }
+
+    .jahr::placeholder {
+      color: #8294a8;
+      opacity: 1;
+    }
+
+    .jahr:focus,
+    input[type="text"]:focus {
+      outline: 3px solid #9ac8ff;
+      border-color: #174b83;
+    }
+
+    .busfelder {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      min-width: 0;
+      height: 48px;
+      padding: 8px 12px;
+      border: 2px solid #b8cce2;
+      border-radius: 8px;
+      background: #fff;
+      color: #172c48;
+      font: inherit;
+      font-size: 18px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      background: #174b83;
+      color: white;
+      font: inherit;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #10365f;
+    }
+
+    button:focus-visible {
+      outline: 3px solid #77b6ff;
+      outline-offset: 3px;
+    }
+
+    #rueckmeldung {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .fehler {
+      display: block !important;
+      color: #8b1e1e;
+      background: #fff0f0;
+      border: 1px solid #e9b5b5;
+    }
+
+    .ticket {
+      display: block !important;
+      color: #12663b;
+      background: #eaf8ef;
+      border: 2px dashed #55b783;
+      padding: 20px !important;
+      text-align: center;
+    }
+
+    .ticketnummer {
+      font-size: 30px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+
+    @media (max-width: 430px) {
+      body {
+        padding: 10px;
+        font-size: 18px;
+      }
+
+      .karte {
+        padding: 15px;
+      }
+
+      .song {
+        grid-template-columns: minmax(0, 1fr) 76px;
+        gap: 8px;
+      }
+
+      .jahr {
+        font-size: 18px;
+        letter-spacing: 1px;
+      }
+
+      .busfelder {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+    }
+  </style>
+  </head>
+ 
+
+  <body>
+    <header>
+ 
+  </header>
+  <main>
+        <section>
+	<p>
+  Dritter Dezember ... langsam wird es ungemütlich hier und es scheint nichts mehr zu tun zu geben. Außer dem Labyrinth hinter Dir siehst
+  Du rings um Dich herum nur Einöde - es ist zwar flach, aber einfach so drauf loszugehen und Du weißt ja gar nicht wohin ... nein, das erscheint Dir nicht richtig
+  zu sein. Aber was ist das? 100 Meter von Dir entfernt siehst Du etwas? Könnte das etwa eine Bus-Station sein? Okay, das Risiko gehst Du 
+  ein und tatsächlich, es ist eine Bus-Station - sogar mit Ticket-Automat und ein sehr interessantes Konzept hier, wie das hier mit den Tickets funktioniert. 
+  </p>
+</section>
+  <section class="karte">
+    <h1>🚌 Ticket-Automat</h1>
+    <p class="untertitel">Das Ticket kann nur mit Wissen bezahlt werden.</p>
+  </section>
+
+  <form id="ticketForm" class="karte" novalidate>
+    <div class="song">
+      <div>
+        <span class="songnummer">SONG 01</span>
+        <audio controls preload="none">
+          <source src="song1.mp3" type="audio/mpeg">
+          Dein Browser unterstützt keine Audio-Wiedergabe.
+        </audio>
+      </div>
+      <input
+        class="jahr"
+        id="jahr1"
+        type="text"
+        inputmode="numeric"
+        maxlength="4"
+        pattern="[0-9]{4}"
+        placeholder="xxxx"
+        aria-label="Vierstellige Antwort zu Song 1"
+        autocomplete="off"
+        require
+      >
+    </div>
+
+    <div class="song">
+      <div>
+        <span class="songnummer">SONG 02</span>
+        <audio controls preload="none">
+          <source src="song2.mp3" type="audio/mpeg">
+          Dein Browser unterstützt keine Audio-Wiedergabe.
+        </audio>
+      </div>
+      <input
+        class="jahr"
+        id="jahr2"
+        type="text"
+        inputmode="numeric"
+        maxlength="4"
+        pattern="[0-9]{4}"
+        placeholder="xxxx"
+        aria-label="Vierstellige Antwort zu Song 2"
+        autocomplete="off"
+        require
+      >
+    </div>
+
+    <div class="song">
+      <div>
+        <span class="songnummer">SONG 03</span>
+        <audio controls preload="none">
+          <source src="song3.mp3" type="audio/mpeg">
+          Dein Browser unterstützt keine Audio-Wiedergabe.
+        </audio>
+      </div>
+      <input
+        class="jahr"
+        id="jahr3"
+        type="text"
+        inputmode="numeric"
+        maxlength="4"
+        pattern="[0-9]{4}"
+        placeholder="xxxx"
+        aria-label="Vierstellige Antwort zu Song 3"
+        autocomplete="off"
+        require
+      >
+    </div>
+
+    <div class="song">
+      <div>
+        <span class="songnummer">SONG 04</span>
+        <audio controls preload="none">
+          <source src="song4.mp3" type="audio/mpeg">
+          Dein Browser unterstützt keine Audio-Wiedergabe.
+        </audio>
+      </div>
+      <input
+        class="jahr"
+        id="jahr4"
+        type="text"
+        inputmode="numeric"
+        maxlength="4"
+        pattern="[0-9]{4}"
+        placeholder="xxxx"
+        aria-label="Vierstellige Antwort zu Song 4"
+        autocomplete="off"
+        require
+      >
+    </div>
+
+    <h2 style="margin-top: 26px;">🚌 Deine Verbindung</h2>
+
+    <div class="busfelder">
+      <div>
+        <label for="busnummer">Bus-Nummer</label>
+        <input
+          type="text"
+          id="busnummer"
+          maxlength="3"
+          placeholder="x-x"
+          autocomplete="off"
+          require
+        >
+      </div>
+
+      <div>
+        <label for="fahrziel">Fahrziel</label>
+        <input
+          type="text"
+          id="fahrziel"
+          placeholder="Wohin geht die Fahrt?"
+          autocomplete="off"
+          require
+        >
+      </div>
+    </div>
+
+    <button type="submit">Ticket anfordern</button>
+
+    <div
+      id="rueckmeldung"
+      role="status"
+      aria-live="polite"
+    ></div>
+  </form>
+	</main>
+  </body>
+<script>
+  // Hier die vier korrekten Veröffentlichungsjahre eintragen.
+  const richtigeJahre = [
+    "1994", // JC
+    "2005", // Mattafix
+    "1982", // Billy Idol
+    "2009", // GD
+  ];
+
+  const formular = document.getElementById("ticketForm");
+  const rueckmeldung = document.getElementById("rueckmeldung");
+
+  formular.addEventListener("submit", function(event) {
+    event.preventDefault();
+
+ const eingegebeneJahre = [1, 2, 3, 4].map(
+      nummer => document.getElementById("jahr" + nummer).value.trim()
+    );
+
+    const busnummer = document
+      .getElementById("busnummer")
+      .value.trim()
+      .toUpperCase()
+      .replace(/\s+/g, "");
+
+    const fahrziel = document
+      .getElementById("fahrziel")
+      .value.trim()
+      .toLowerCase();
+
+
+    const richtigeSongJahre = eingegebeneJahre.every(
+      (jahr, index) =>
+        jahr === richtigeJahre[index] &&
+        /^[0-9]{4}$/.test(jahr)
+    );
+
+    const richtigerBus = busnummer === "E-1";
+    const richtigesZiel = fahrziel.includes("city");
+
+    rueckmeldung.style.display = "block";
+    rueckmeldung.className = "";
+    rueckmeldung.replaceChildren();
+	
+	
+  if (richtigeSongJahre && richtigerBus && richtigesZiel) {
+      rueckmeldung.className = "ticket";
+
+      const titel = document.createElement("div");
+      titel.className = "ticketnummer";
+      titel.textContent = "TICKET A-4";
+
+      const nachricht = document.createElement("p");
+      nachricht.textContent =
+        "Dein Ticket A-4 wurde gedruckt. Bitte vergiss es nicht und Gute Fahrt!";
+
+      const details = document.createElement("p");
+      details.textContent = "Bus: E-1 · Fahrziel: City";
+
+      rueckmeldung.append(titel, nachricht, details);
+    } else {
+      rueckmeldung.className = "fehler";
+
+      const titel = document.createElement("strong");
+      titel.textContent = "Kein Ticket möglich. Das Wissen genügt noch nicht.";
+
+      const liste = document.createElement("ul");
+
+      [
+        richtigeSongJahre
+          ? "✓ Gratuliere, Du bist ein Musik-Champ!"
+          : "✗ Überprüfe das besser noch einmal.",
+		  
+	    richtigerBus
+          ? "✓ Bus E-1 kommt alle 10 Minuten."
+          : "✗ Dieser Bus hält hier nicht.",
+
+        richtigesZiel
+          ? "✓ Fahrziel korrekt"
+          : "✗ Dieses Fahrziel gibt es nicht."
+      ].forEach(text => {
+        const eintrag = document.createElement("li");
+        eintrag.textContent = text;
+        liste.appendChild(eintrag);
+      });
+
+      rueckmeldung.append(titel, liste);
+    }
+  });
+    	  </script>
+</html>
