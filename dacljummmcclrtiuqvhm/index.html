@@ -1,0 +1,331 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <title>4. Dezember</title>
+  <link rel="stylesheet" href="https://martin24h.github.io/martin24h/akcss/inc.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+  pre.fblack{background:black;color:#FFF;padding:0.5em;}
+  pre.fgray{background:#F4F4F4;color:#000;padding:0.5em;}
+  code{font-weight:bold;font-size:0.9em;color:#333;}
+  table{border-collapse:collapse;}
+  td,th{border:1px solid #AAA;}
+  .fred{color:red;font-weight:bold;}
+  .fblue{color:blue;font-weight:bold;}
+  .forange{color:orange;font-weight:bold;}
+
+#geloest {
+    display: none;
+    width: min(92vw, 600px);
+    box-sizing: border-box;
+    margin: 15px auto;
+    padding: 20px;
+    background: white;
+    color: black;
+    border: 3px solid green;
+    border-radius: 12px;
+    text-align: center;
+    font-family: Arial, sans-serif;
+} 
+
+ body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f3f4f6;
+      padding: 15px;
+    }
+
+    #puzzle {
+      display: grid;
+      gap: 3px;
+      width: min(92vw, 600px);
+      aspect-ratio: 1 / 1;
+      margin: 20px auto;
+      padding: 3px;
+      background: #333;
+      touch-action: manipulation;
+    }
+
+    .kachel {
+      border: 2px solid transparent;
+      border-radius: 2px;
+      min-width: 0;
+      min-height: 0;
+      padding: 0;
+      cursor: pointer;
+      background-repeat: no-repeat;
+      touch-action: manipulation;
+    }
+
+    .kachel.ausgewaehlt {
+      border: 3px solid #ffca28;
+    }
+
+    button {
+      font-size: 16px;
+    }
+
+    #meldung {
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+	<p>
+  Vierter Dezember ... nach einer langen Fahrt kommt der Bus endlich in der Stadt an. Du steigst aus und merkst ... Du hast Huuuunnnnngaaaaa. Aber praktisch, gleich neben der Bus-Station gibt es
+  ein Lokal - doch die Speisekarte schaut seltsam aus ... wie soll man da etwas bestellen können? 
+  </p>
+  
+  <div id="puzzle"></div>
+
+<div id="geloest">
+    <h2>🎉 Geschafft!</h2>
+    <p>Das sieht jetzt nach einer umfangreichen Speisekarte aus.</p>
+    <p>Genau nach Deinem Geschmack. Hungrig wie Du bist, bestellst Du alles.</p>
+    <p>Du freust Dich, bist erwartungsvoll und suchst Dir mit Deinem Bestellcode <strong>C-5</strong> einen ruhigen Platz.</p>
+    <p>Mahlzeit und verlier Deinen Bestellcode nicht!</p>
+</div>
+
+<!--
+  <p id="meldung" aria-live="polite"></p>
+  <p id="entropie">Entropie: –</p> 
+
+  <button id="neuStarten" type="button">Neu mischen</button> 
+-->
+
+  <script>
+    // ==================================
+    // EINSTELLUNG: NUR DIESE ZAHL ÄNDERN
+    // ==================================
+    const ANZAHL = 5; // 4 = 4x4, 5 = 5x5, 6 = 6x6 usw.
+
+    // Bilddatei im selben Ordner wie die HTML-Datei
+    const BILD = "bild.jpg";
+
+    // ==================================
+    // AB HIER NICHTS MEHR ÄNDERN
+    // ==================================
+
+    const puzzle = document.getElementById("puzzle");
+    const meldung = document.getElementById("meldung");
+    const neuStarten = document.getElementById("neuStarten");
+
+    const GESAMT = ANZAHL * ANZAHL;
+
+    let kacheln = [];
+    let ausgewaehlt = null;
+    let spielAktiv = true;
+
+    puzzle.style.gridTemplateColumns =
+      `repeat(${ANZAHL}, minmax(0, 1fr))`;
+
+    puzzle.style.gridTemplateRows =
+      `repeat(${ANZAHL}, minmax(0, 1fr))`;
+
+    // Nachbarpositionen (oben, unten, links, rechts)
+    function nachbarn(position) {
+      const zeile = Math.floor(position / ANZAHL);
+      const spalte = position % ANZAHL;
+      const ergebnis = [];
+
+      if (zeile > 0) ergebnis.push(position - ANZAHL);
+      if (zeile < ANZAHL - 1) ergebnis.push(position + ANZAHL);
+      if (spalte > 0) ergebnis.push(position - 1);
+      if (spalte < ANZAHL - 1) ergebnis.push(position + 1);
+
+      return ergebnis;
+    }
+
+    // Kacheln tauschen
+    function tauschen(a, b) {
+      [kacheln[a], kacheln[b]] = [kacheln[b], kacheln[a]];
+    }
+
+    // Puzzle durch gültige Nachbarzüge mischen.
+    // So bleibt es garantiert lösbar.
+
+function mischen() {
+  const MIN_VERSUCHE = 100*0+1;
+  const MAX_VERSUCHE = 120;
+  const MIN_DISTANZ = 90*0+1;
+
+  let erfolgreich = false;
+  let versuche = 0;
+
+  while (!erfolgreich) {
+
+    kacheln = Array.from(
+      { length: GESAMT },
+      (_, i) => i
+    );
+
+    ausgewaehlt = null;
+    versuche = 0;
+
+    while (
+      versuche < MAX_VERSUCHE &&
+      (
+        versuche < MIN_VERSUCHE ||
+        berechneManhattanDistanz() < MIN_DISTANZ
+      )
+    ) {
+      const start = Math.floor(Math.random() * GESAMT);
+      const moeglich = nachbarn(start);
+
+      const ziel = moeglich[
+        Math.floor(Math.random() * moeglich.length)
+      ];
+
+      tauschen(start, ziel);
+      versuche++;
+    }
+
+    if (
+      versuche >= MIN_VERSUCHE &&
+      berechneManhattanDistanz() >= MIN_DISTANZ
+    ) {
+      erfolgreich = true;
+    }
+  }
+
+  spielAktiv = true;
+  zeichnen();
+
+  /* meldung.textContent =
+    `Puzzle gemischt! Manhattan-Distanz: ${berechneManhattanDistanz()}, Schritte: ${versuche}`; */
+}
+
+
+
+    // Prüfen, ob alle Kacheln an ihrem richtigen Platz liegen
+    function geloest() {
+      return kacheln.every((wert, index) => wert === index);
+    }
+
+  // Entropie als Summe der quadrierten Abstände
+	
+		function berechneManhattanDistanz() {
+		  let summe = 0;
+
+		  kacheln.forEach((bildIndex, aktuellePosition) => {
+			const xAktuell = aktuellePosition % ANZAHL;
+			const yAktuell = Math.floor(aktuellePosition / ANZAHL);
+
+			const xRichtig = bildIndex % ANZAHL;
+			const yRichtig = Math.floor(bildIndex / ANZAHL);
+
+			summe +=
+			  Math.abs(xAktuell - xRichtig) +
+			  Math.abs(yAktuell - yRichtig);
+		  });
+
+		  return summe;
+		}
+
+		// Entropie in der Statuszeile anzeigen
+		function aktualisiereEntropie() {
+		  document.getElementById("entropie").textContent =
+			`Entropie: ${berechneManhattanDistanz()}`;
+		}
+
+    // Puzzle anzeigen
+    function zeichnen() {
+      puzzle.innerHTML = "";
+
+      kacheln.forEach((bildIndex, position) => {
+        const kachel = document.createElement("button");
+        kachel.type = "button";
+        kachel.className = "kachel";
+        kachel.setAttribute(
+          "aria-label",
+          `Kachel ${position + 1}`
+        );
+
+        if (position === ausgewaehlt) {
+          kachel.classList.add("ausgewaehlt");
+        }
+
+        const bildZeile = Math.floor(bildIndex / ANZAHL);
+        const bildSpalte = bildIndex % ANZAHL;
+
+        const x = bildSpalte / (ANZAHL - 1) * 100;
+        const y = bildZeile / (ANZAHL - 1) * 100;
+
+        kachel.style.backgroundImage = `url("${BILD}")`;
+        kachel.style.backgroundSize =
+          `${ANZAHL * 100}% ${ANZAHL * 100}%`;
+        kachel.style.backgroundPosition = `${x}% ${y}%`;
+
+        kachel.addEventListener("click", () => anklicken(position));
+
+        puzzle.appendChild(kachel);
+      });
+	  /* aktualisiereEntropie(); */
+    }
+
+    // Kachel anklicken und gegebenenfalls tauschen
+    function anklicken(position) {
+      if (!spielAktiv) return;
+
+      if (ausgewaehlt === null) {
+        ausgewaehlt = position;
+        zeichnen();
+/*        meldung.textContent =
+          "Jetzt eine direkt benachbarte Kachel auswählen."; */
+        return;
+      }
+
+      if (ausgewaehlt === position) {
+        ausgewaehlt = null;
+        zeichnen();
+        meldung.textContent = "Auswahl aufgehoben.";
+        return;
+      }
+
+      if (nachbarn(ausgewaehlt).includes(position)) {
+        tauschen(ausgewaehlt, position);
+        ausgewaehlt = null;
+        zeichnen();
+
+        if (geloest()) {
+          spielAktiv = false;
+/*          meldung.textContent = "Geschafft! Das Bild ist wieder richtig."; 
+          setTimeout(() => {
+            alert("?? Glückwunsch! Du hast das Puzzle gelöst!");
+          }, 100); */
+		  	document.getElementById("geloest").style.display = "block";
+        } else {
+/*          meldung.textContent = "Kacheln getauscht!"; */
+        }
+
+        return;
+      }
+
+      // Nicht benachbart: neue erste Kachel auswählen
+      ausgewaehlt = position;
+      zeichnen();
+ /*     meldung.textContent =
+        "Bitte eine direkt benachbarte Kachel auswählen."; */
+    }
+
+/*    neuStarten.addEventListener("click", mischen); */
+
+    // Startet das Puzzle automatisch
+    const bildTest = new Image();
+
+    bildTest.onload = mischen;
+/*
+    bildTest.onerror = () => {
+      meldung.textContent =
+        "Bild nicht gefunden. Bitte bild1.jpg neben der HTML-Datei speichern.";
+    };
+*/
+    bildTest.src = BILD;
+  </script>
+
+</body>
+</html>
