@@ -206,7 +206,7 @@ siehst einen herrlichen Sternenhimmel über Dir. Es funkelt und blinkt ... soooo
 <div id="geschwindigkeitPanel" style="display: none;">
   <label for="geschwindigkeit">
     Geschwindigkeit:
-    <span id="geschwindigkeitWert">0,25</span> Sekunden
+    <span id="geschwindigkeitWert">0,35</span> Sekunden
   </label>
 
   <input
@@ -256,6 +256,7 @@ let eingabe = [];
 
 let aktuellesBild = 0;
 let pause = 350;
+let fehlerAnzahl = 0;
 let aktiv = false;
 let spielGestartet = false;
 
@@ -689,9 +690,15 @@ function anklicken(index) {
 
     aktiv = false;
     pause += 500*0;
+	fehlerAnzahl++;
 
-    status.textContent =
-      "Irgendwie ist das noch nicht des Rätsels Lösung - Du musst es wohl weiter versuchen ...";
+	if (fehlerAnzahl >= 6) {
+		status.textContent = "Wäre es nicht toll, wenn Du den Sternenhimmel angreifen könntest?";
+	} else if (fehlerAnzahl >= 3) {
+		status.textContent = "Hm, wenn das Blinken nur nicht so schnell wäre ...";
+	} else {
+		status.textContent = "Irgendwas passt nicht - Du musst es wohl weiter versuchen ...";
+	}
 
  // Neue zufällige Reihenfolge für denselben Rätselabschnitt
   reihenfolge = zufallsReihenfolge(sternbilder[aktuellesBild].punkte);
@@ -741,7 +748,7 @@ function anklicken(index) {
 // ==================================
 
 function neueRunde() {
-
+  fehlerAnzahl = 0;
   sternbildErzeugen();
 
   vorfuehren();
