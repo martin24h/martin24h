@@ -1,0 +1,839 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<title>5. Dezember</title>
+  <link rel="stylesheet" href="https://martin24h.github.io/martin24h/akcss/inc.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+#geschwindigkeitPanel {
+  max-width: 350px;
+  margin: 20px auto;
+  padding: 15px;
+  background: #18213b;
+  color: white;
+  border-radius: 10px;
+  text-align: center;
+}
+
+#geschwindigkeit {
+  width: 100%;
+  margin-top: 12px;
+}
+  pre.fblack{background:black;color:#FFF;padding:0.5em;}
+  pre.fgray{background:#F4F4F4;color:#000;padding:0.5em;}
+  code{font-weight:bold;font-size:0.9em;color:#333;}
+  table{border-collapse:collapse;}
+  td,th{border:1px solid #AAA;}
+  .fred{color:red;font-weight:bold;}
+  .fblue{color:blue;font-weight:bold;}
+  .forange{color:orange;font-weight:bold;}
+
+#vorschauBereich {
+  margin: 35px auto;
+  max-width: 600px;
+  text-align: center;
+}
+
+#vorschauHimmel {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at center, #17264a 0%, #080d20 75%);
+  border: 1px solid #526080;
+}
+
+#vorschauLinien {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.vorschauStern {
+  fill: #fff4b0;
+  filter: drop-shadow(0 0 4px #fff);
+}
+
+.vorschauLinie {
+  stroke: #fff4b0;
+  stroke-width: 0.7;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 3px #fff);
+}
+
+body {
+  margin: 0;
+  padding: 15px;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  color: white;
+  background: #050817;
+}
+
+h1 {
+  margin-top: 10px;
+}
+
+#himmel {
+  position: relative;
+  width: min(94vw, 600px);
+  aspect-ratio: 1 / 1;
+  margin: 20px auto;
+  overflow: hidden;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    #17254a,
+    #050817 75%
+  );
+  border: 1px solid #34466f;
+  border-radius: 12px;
+  touch-action: manipulation;
+}
+
+.hintergrundstern {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: white;
+  animation: funkeln 2s infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes funkeln {
+  from { opacity: 0.15; }
+  to { opacity: 1; }
+}
+
+#linien {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+#verbindungen {
+  fill: none;
+  stroke: #ffe45c;
+  stroke-width: 0.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.stern {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #7185ad;
+  font-size: 23px;
+  line-height: 22px;
+  cursor: pointer;
+  z-index: 2;
+  touch-action: manipulation;
+}
+
+.stern.aktiv {
+  color: #fff5a0;
+  text-shadow:
+    0 0 8px white,
+    0 0 18px #ffe45c,
+    0 0 30px #ffbd36;
+  transform: translate(-50%, -50%) scale(1.5);
+}
+
+.stern.richtig {
+  color: #ffe45c;
+  text-shadow: 0 0 12px #ffe45c;
+}
+
+#status {
+  min-height: 45px;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+#start {
+  padding: 12px 25px;
+  font-size: 17px;
+  border: none;
+  border-radius: 8px;
+  background: #ffe45c;
+  color: #17203a;
+  cursor: pointer;
+}
+
+#geloest {
+  display: none;
+  margin: 20px auto;
+  padding: 20px;
+  max-width: 560px;
+  color: #fff5a0;
+  background: #17254a;
+  border: 2px solid #ffe45c;
+  border-radius: 12px;
+}
+</style>
+</head>
+
+<body>
+
+<p>Fünfter Dezember ... nach Deinem ausgezeichnetem Festmahl ruhst Du Dich im nahegelegenen Park aus, legst Dich in die Wiese und 
+siehst einen herrlichen Sternenhimmel über Dir. Es funkelt und blinkt ... sooooo schöööööön. Will Dir der Sternenhimmel vielleicht etwas sagen? 
+</p>
+
+<div id="himmel">
+  <svg id="linien"
+       viewBox="0 0 100 100"
+       preserveAspectRatio="none">
+    <g id="verbindungen"></g>
+  </svg>
+</div>
+
+<div id="status">...</div>
+
+<div id="geschwindigkeitPanel" style="display: none;">
+  <label for="geschwindigkeit">
+    Geschwindigkeit:
+    <span id="geschwindigkeitWert">0,25</span> Sekunden
+  </label>
+
+  <input
+    type="range"
+    id="geschwindigkeit"
+    min="100"
+    max="2100"
+    step="250"
+    value="350"
+  >
+</div>
+
+<!-- <button id="start">Sternenrätsel starten</button> -->
+
+<div id="geloest">
+  <p>Spannend, spannend - solltest Du Dir diese Sternzeichen vielleicht merken?</p>
+</div>
+
+<!--
+<div id="vorschauBereich">
+  <h2>Vorschau – fertiges E</h2>
+  <p>Hier kannst du die Sternpositionen und Linien testen.</p>
+
+  <div id="vorschauHimmel">
+    <svg id="vorschauLinien" viewBox="0 0 100 100">
+      <g id="vorschauVerbindungen"></g>
+    </svg>
+  </div>
+</div>
+-->
+
+
+<script>
+
+// ==================================
+// GRUNDEINSTELLUNGEN
+// ==================================
+
+const himmel = document.getElementById("himmel");
+const status = document.getElementById("status");
+const start = document.getElementById("start");
+const verbindungen = document.getElementById("verbindungen");
+
+let sterne = [];
+let reihenfolge = [];
+let eingabe = [];
+
+let aktuellesBild = 0;
+let pause = 350;
+let aktiv = false;
+let spielGestartet = false;
+
+let angeklickt = new Set();
+let gezeichneteLinien = new Set();
+
+
+// ==================================
+// STERNBILDER
+//
+// punkte: Positionen der Sterne
+// linien: Verbindungen zwischen Sternen
+// ==================================
+
+const sternbilder = [
+
+// 1. E – erster Teil
+{
+  name: "E – erster Teil",
+
+  punkte: [
+    [8,12],   // oben links
+    [45,15],  // oben rechts
+    [15,30],  // Beginn senkrechter Strich
+    [19,48],  // weiter nach unten
+    [23,82]   // unteres Ende
+  ],
+
+  linien: [
+    [0,1],
+    [0,2],
+    [2,3],
+    [3,4]
+  ]
+},
+
+// 2. E – Mittelstrich
+{
+  name: "E – Mittelstrich",
+
+  punkte: [
+    [19,48], [27,46], [35,44],
+    [43,42], [51,40]
+  ],
+
+  linien: [
+    [0,1], [1,2], [2,3], [3,4]
+  ]
+},
+
+// 3. E – Unterstrich
+{
+  name: "E – Unterstrich",
+
+  punkte: [
+    [23,82], [31,84], [39,82],
+    [47,80], [55,84]
+  ],
+
+  linien: [
+    [0,1], [1,2], [2,3], [3,4]
+  ]
+},
+
+  // 4. Bindestrich
+  {
+    name: "Bindestrich",
+
+    punkte: [
+      [51,50], [54.5,49], [58,50],
+      [61.5,51], [65,50]
+    ],
+
+    linien: [
+      [0,1], [1,2], [2,3], [3,4]
+    ]
+  },
+
+  // 5. 2 – oberer Bogen
+  {
+    name: "2 – erster Teil",
+
+    punkte: [
+      [68,25], [73,18], [80,14],
+      [87,15], [93,22], [94,32],
+      [88,43]
+    ],
+
+    linien: [
+      [0,1], [1,2], [2,3],
+      [3,4], [4,5], [5,6]
+    ]
+  },
+
+  // 6. 2 – unterer Bogen und Abschluss
+  {
+    name: "2 – zweiter Teil",
+
+    punkte: [
+      [88,43], [82,50], [76,57],
+      [71,65], [67,74], [67,84],
+      [80,86], [94,85]
+    ],
+
+    linien: [
+      [0,1], [1,2], [2,3],
+      [3,4], [4,5], [5,6], [6,7]
+    ]
+  }
+
+];
+
+function vorschauZeichnen() {
+  const gruppe = document.getElementById("vorschauVerbindungen");
+
+  gruppe.innerHTML = "";
+
+  // Die ersten drei Abschnitte bilden gemeinsam das E
+  const eAbschnitte = sternbilder;
+
+  eAbschnitte.forEach(bild => {
+
+    // Verbindungslinien zeichnen
+    bild.linien.forEach(([a, b]) => {
+      const start = bild.punkte[a];
+      const ende = bild.punkte[b];
+
+      const linie = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "line"
+      );
+
+      linie.setAttribute("x1", start[0]);
+      linie.setAttribute("y1", start[1]);
+      linie.setAttribute("x2", ende[0]);
+      linie.setAttribute("y2", ende[1]);
+      linie.classList.add("vorschauLinie");
+
+      gruppe.appendChild(linie);
+    });
+
+    // Sterne zeichnen
+    bild.punkte.forEach(([x, y]) => {
+      const stern = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "circle"
+      );
+
+      stern.setAttribute("cx", x);
+      stern.setAttribute("cy", y);
+      stern.setAttribute("r", 1.5);
+      stern.classList.add("vorschauStern");
+
+      gruppe.appendChild(stern);
+    });
+  });
+}
+/* vorschauZeichnen(); */
+
+// ==================================
+// ZUFÄLLIGE KLICKREIHENFOLGE
+// ==================================
+
+function zufallsReihenfolge(punkte) {
+
+  const anzahl = punkte.length;
+
+  // Für mindestens vier Sterne geeignet.
+  if (anzahl < 4) {
+    return punkte.map((_, i) => i);
+  }
+
+  let ergebnis = [];
+
+  for (let versuch = 0; versuch < 500; versuch++) {
+
+    // Ausgangsreihenfolge erzeugen
+    ergebnis = punkte.map((_, i) => i);
+
+    // Fisher-Yates-Mischen
+    for (let i = ergebnis.length - 1; i > 0; i--) {
+
+      const j = Math.floor(Math.random() * (i + 1));
+
+      [ergebnis[i], ergebnis[j]] =
+        [ergebnis[j], ergebnis[i]];
+    }
+
+    const x = ergebnis.map(i => punkte[i][0]);
+    const y = ergebnis.map(i => punkte[i][1]);
+
+    // Prüfen, ob alles nur von links nach rechts läuft
+    const xAufsteigend =
+      x.every((wert, i) => i === 0 || wert > x[i - 1]);
+
+    const xAbsteigend =
+      x.every((wert, i) => i === 0 || wert < x[i - 1]);
+
+    // Prüfen, ob alles nur von oben nach unten läuft
+    const yAufsteigend =
+      y.every((wert, i) => i === 0 || wert > y[i - 1]);
+
+    const yAbsteigend =
+      y.every((wert, i) => i === 0 || wert < y[i - 1]);
+
+    // Zu einfache Reihenfolgen verwerfen
+    if (
+      !xAufsteigend &&
+      !xAbsteigend &&
+      !yAufsteigend &&
+      !yAbsteigend
+    ) {
+      return ergebnis;
+    }
+  }
+
+  // Sicherheitslösung
+  return ergebnis;
+}
+
+
+// ==================================
+// HINTERGRUNDSTERNE
+// ==================================
+
+function hintergrundErzeugen() {
+
+  for (let i = 0; i < 100; i++) {
+
+    const stern = document.createElement("div");
+
+    stern.className = "hintergrundstern";
+    stern.style.left = Math.random() * 100 + "%";
+    stern.style.top = Math.random() * 100 + "%";
+    stern.style.animationDelay =
+      Math.random() * 3 + "s";
+
+    himmel.appendChild(stern);
+  }
+}
+
+
+// ==================================
+// STERNBILD ERZEUGEN
+// ==================================
+
+function sternbildErzeugen() {
+
+  sterne = [];
+
+  angeklickt = new Set();
+  gezeichneteLinien = new Set();
+
+  const bild = sternbilder[aktuellesBild];
+
+  // Neue Zufallsreihenfolge für dieses Teilrätsel
+  reihenfolge = zufallsReihenfolge(bild.punkte);
+
+  bild.punkte.forEach((punkt, index) => {
+
+    const stern = document.createElement("button");
+
+    stern.type = "button";
+    stern.className = "stern";
+    stern.textContent = "★";
+
+    stern.style.left = punkt[0] + "%";
+    stern.style.top = punkt[1] + "%";
+
+    stern.setAttribute(
+      "aria-label",
+      "Stern " + (index + 1)
+    );
+
+    stern.addEventListener("click", () => {
+      anklicken(index);
+    });
+
+    himmel.appendChild(stern);
+
+    sterne.push(stern);
+  });
+}
+
+
+// ==================================
+// LINIEN ZEICHNEN
+// ==================================
+
+function linieZeichnen(a, b) {
+
+  const bild = sternbilder[aktuellesBild];
+
+  const p1 = bild.punkte[a];
+  const p2 = bild.punkte[b];
+
+  const linie = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "line"
+  );
+
+  linie.setAttribute("x1", p1[0]);
+  linie.setAttribute("y1", p1[1]);
+
+  linie.setAttribute("x2", p2[0]);
+  linie.setAttribute("y2", p2[1]);
+
+  verbindungen.appendChild(linie);
+}
+
+
+// ==================================
+// ALLE BEREITS ERKENNBAREN LINIEN
+// ZEICHNEN
+// ==================================
+
+function aktualisiereLinien() {
+
+  const bild = sternbilder[aktuellesBild];
+
+  bild.linien.forEach((linie, index) => {
+
+    const a = linie[0];
+    const b = linie[1];
+
+    const schluessel = aktuellesBild + "-" + index;
+
+    if (
+      angeklickt.has(a) &&
+      angeklickt.has(b) &&
+      !gezeichneteLinien.has(schluessel)
+    ) {
+
+      linieZeichnen(a, b);
+
+      gezeichneteLinien.add(schluessel);
+    }
+  });
+}
+
+
+// ==================================
+// STERNE VORFÜHREN
+// ==================================
+
+async function vorfuehren() {
+
+  aktiv = false;
+  eingabe = [];
+
+  sterne.forEach(s => {
+    s.classList.remove("aktiv", "richtig");
+  });
+
+  angeklickt.clear();
+
+  // Nur die Linien des aktuellen Teilrätsels entfernen
+  const bild = sternbilder[aktuellesBild];
+
+  bild.linien.forEach((linie, index) => {
+    const schluessel = aktuellesBild + "-" + index;
+    gezeichneteLinien.delete(schluessel);
+  });
+
+  const alteLinien = verbindungen.querySelectorAll(
+    ".linie-" + aktuellesBild
+  );
+
+  alteLinien.forEach(linie => linie.remove());
+
+  status.textContent = "...";
+/*    bild.name + ": Schau genau hin ..."; */
+
+  for (const index of reihenfolge) {
+
+    sterne[index].classList.add("aktiv");
+
+    await warten(pause);
+
+    sterne[index].classList.remove("aktiv");
+
+    await warten(150);
+  }
+
+  status.textContent = "...";
+    /* bild.name + ": Jetzt bist du dran!"; */
+
+  aktiv = true;
+}
+
+
+// ==================================
+// LINIEN ZEICHNEN MIT ZUORDNUNG
+// ==================================
+
+function linieZeichnen(a, b) {
+
+  const bild = sternbilder[aktuellesBild];
+
+  const p1 = bild.punkte[a];
+  const p2 = bild.punkte[b];
+
+  const linie = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "line"
+  );
+
+  linie.setAttribute("x1", p1[0]);
+  linie.setAttribute("y1", p1[1]);
+  linie.setAttribute("x2", p2[0]);
+  linie.setAttribute("y2", p2[1]);
+
+  linie.classList.add("linie-" + aktuellesBild);
+
+  verbindungen.appendChild(linie);
+}
+
+
+// ==================================
+// SPIELER-EINGABE
+// ==================================
+
+function anklicken(index) {
+
+  if (!aktiv) return;
+
+  const erwartet = reihenfolge[eingabe.length];
+
+  // Falscher Stern
+  if (index !== erwartet) {
+
+    aktiv = false;
+    pause += 500*0;
+
+    status.textContent =
+      "Irgendwie ist das noch nicht des Rätsels Lösung - Du musst es wohl weiter versuchen ...";
+
+ // Neue zufällige Reihenfolge für denselben Rätselabschnitt
+  reihenfolge = zufallsReihenfolge(sternbilder[aktuellesBild].punkte);
+  
+    setTimeout(vorfuehren, 3000);
+
+    return;
+  }
+
+  // Richtiger Stern
+  sterne[index].classList.add("richtig");
+
+  eingabe.push(index);
+  angeklickt.add(index);
+
+  // Linien unabhängig von der Klickreihenfolge zeichnen
+  aktualisiereLinien();
+
+  // Teilrätsel vollständig?
+  if (eingabe.length === reihenfolge.length) {
+
+    aktiv = false;
+
+    aktuellesBild++;
+
+    if (aktuellesBild >= sternbilder.length) {
+
+      status.textContent =
+        "...";
+
+      document.getElementById("geloest")
+        .style.display = "block";
+
+      return;
+    }
+
+    status.textContent =
+      "Das sieht schon interessant aus ... aber da kommt wohl noch etwas ...";
+
+    setTimeout(neueRunde, 5000);
+  }
+}
+
+
+// ==================================
+// NEUE RUNDE
+// ==================================
+
+function neueRunde() {
+
+  sternbildErzeugen();
+
+  vorfuehren();
+}
+
+
+// ==================================
+// WARTEFUNKTION
+// ==================================
+
+function warten(ms) {
+
+  return new Promise(resolve =>
+    setTimeout(resolve, ms)
+  );
+}
+
+
+// ==================================
+// SPIELSTART
+// ==================================
+
+/* start.addEventListener("click", () => {
+
+  if (spielGestartet) return;
+
+  spielGestartet = true;
+
+  start.style.display = "none";
+
+  hintergrundErzeugen();
+
+  neueRunde();
+}); */
+
+// =================================
+// VERSTECKTE GESCHWINDIGKEITSSTEUERUNG
+// =================================
+
+const geschwindigkeitPanel =
+  document.getElementById("geschwindigkeitPanel");
+
+const geschwindigkeit =
+  document.getElementById("geschwindigkeit");
+
+const geschwindigkeitWert =
+  document.getElementById("geschwindigkeitWert");
+
+// Slider steuert die Geschwindigkeit
+geschwindigkeit.addEventListener("input", () => {
+  pause = Number(geschwindigkeit.value);
+
+  geschwindigkeitWert.textContent =
+    (pause / 1000).toFixed(2).replace(".", ",");
+});
+
+// Fünfmal auf den freien Sternenhimmel tippen
+let himmelTipps = 0;
+let himmelTimer;
+
+himmel.addEventListener("click", (event) => {
+
+  // Klick auf einen Spielstern nicht mitzählen
+  if (event.target.closest(".stern")) {
+    return;
+  }
+
+  himmelTipps++;
+
+  clearTimeout(himmelTimer);
+
+  himmelTimer = setTimeout(() => {
+    himmelTipps = 0;
+  }, 2000);
+
+  if (himmelTipps >= 5) {
+    geschwindigkeitPanel.style.display =
+      geschwindigkeitPanel.style.display === "none"
+        ? "block"
+        : "none";
+
+    himmelTipps = 0;
+  }
+});
+
+
+window.addEventListener("load", () => {
+  hintergrundErzeugen();
+  neueRunde();
+});
+
+</script>
+
+</body>
+</html>
