@@ -459,111 +459,73 @@ function positionenBerechnen(anzahl) {
 
   const breite = spielfeld.clientWidth;
   const hoehe = spielfeld.clientHeight;
-
   const abstand = BILD_ABSTAND;
 
-  // Bildgröße so bestimmen, dass auch die maximale
-  // Bildanzahl bequem auf das Spielfeld passt.
-  const spalten = Math.ceil(Math.sqrt(anzahl));
-  const zeilen = Math.ceil(anzahl / spalten);
+  // Passendes Raster auswählen
+  let spalten;
+  let zeilen;
 
+  if (anzahl <= 4) {
+    spalten = 2;
+    zeilen = 2;
+  } else {
+    spalten = 3;
+    zeilen = 2;
+  }
+
+  // Größe eines unsichtbaren Bildplatzes
+  const feldBreite =
+    (breite - abstand * (spalten + 1)) / spalten;
+
+  const feldHoehe =
+    (hoehe - abstand * (zeilen + 1)) / zeilen;
+
+  // Bildgröße an den verfügbaren Platz anpassen
   const bildGroesse = Math.floor(
     Math.min(
       MAX_BILD_GROESSE,
-      (breite - abstand * (spalten + 1)) / spalten,
-      (hoehe - abstand * (zeilen + 1)) / zeilen
+      feldBreite,
+      feldHoehe
     )
   );
 
-  if (bildGroesse < MIN_BILD_GROESSE) {
-    throw new Error("Das Spielfeld ist zu klein.");
-  }
+  // Alle möglichen Plätze vorbereiten
+  const plaetze = [];
 
-  const positionen = [];
+  for (let zeile = 0; zeile < zeilen; zeile++) {
+    for (let spalte = 0; spalte < spalten; spalte++) {
 
-  // Zufällige Positionen ausprobieren.
-  // Bereits belegte Bereiche werden ausgeschlossen.
-  for (let i = 0; i < anzahl; i++) {
-
-    let passendePosition = null;
-
-    for (let versuch = 0; versuch < 500; versuch++) {
-
-      const x = abstand + zufall(
-        Math.max(1, Math.floor(
-          breite - bildGroesse - 2 * abstand
-        ))
-      );
-
-      const y = abstand + zufall(
-        Math.max(1, Math.floor(
-          hoehe - bildGroesse - 2 * abstand
-        ))
-      );
-
-      const ueberschneidung = positionen.some(pos => {
-
-        return !(
-          x + bildGroesse + abstand <= pos.x ||
-          x >= pos.x + bildGroesse + abstand ||
-          y + bildGroesse + abstand <= pos.y ||
-          y >= pos.y + bildGroesse + abstand
-        );
-
+      plaetze.push({
+        x: abstand + spalte * (feldBreite + abstand),
+        y: abstand + zeile * (feldHoehe + abstand)
       });
 
-      if (!ueberschneidung) {
-        passendePosition = { x, y };
-        break;
-      }
-
     }
+  }
 
-    // Falls die Zufallssuche keinen Platz findet,
-    // wird ein freier Platz systematisch gesucht.
-    if (!passendePosition) {
+  // Plätze zufällig mischen
+  for (let i = plaetze.length - 1; i > 0; i--) {
 
-      for (
-        let y = abstand;
-        y <= hoehe - bildGroesse - abstand && !passendePosition;
-        y += 5
-      ) {
+    const j = zufall(i + 1);
 
-        for (
-          let x = abstand;
-          x <= breite - bildGroesse - abstand;
-          x += 5
-        ) {
-
-          const frei = positionen.every(pos => {
-
-            return (
-              x + bildGroesse + abstand <= pos.x ||
-              x >= pos.x + bildGroesse + abstand ||
-              y + bildGroesse + abstand <= pos.y ||
-              y >= pos.y + bildGroesse + abstand
-            );
-
-          });
-
-          if (frei) {
-            passendePosition = { x, y };
-            break;
-          }
-
-        }
-
-      }
-
-    }
-
-    if (!passendePosition) {
-      throw new Error("Keine freie Position gefunden.");
-    }
-
-    positionen.push(passendePosition);
+    [plaetze[i], plaetze[j]] =
+      [plaetze[j], plaetze[i]];
 
   }
+
+  // Nur so viele Plätze verwenden, wie Bilder benötigt werden
+  const positionen = plaetze.slice(0, anzahl).map(platz => {
+
+    // Bild innerhalb seines Platzes zentrieren
+    const spielraumX = feldBreite - bildGroesse;
+    const spielraumY = feldHoehe - bildGroesse;
+
+    return {
+      x: Math.round(platz.x + spielraumX / 2),
+      y: Math.round(platz.y + spielraumY / 2)
+    };
+
+  });
 
   return {
     groesse: bildGroesse,
