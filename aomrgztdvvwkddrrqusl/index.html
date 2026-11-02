@@ -130,15 +130,15 @@
 <body>
 <p>
   7. Dezember ... Dein neuer Bestell-Code von gestern hat im Lokal leider doch nicht nochmals funktioniert. Aber halb so schlimm, Du bist ohnehin 
-  noch immer ziemlich satt. Allerdings wird es ein wenig fad und Du würdest Dir gerne einen Überblick über die Stadt verschaffen, in der 
-  Du da gelandet bist. Und wie praktisch: direkt neben dem Lokal gibt es einen Lift mit der Aufschrift "Zur Aussichtsplattform mit Blick über die Stadt". 
+  noch immer ziemlich satt. Allerdings wird es hier ein wenig fad und Du würdest Dir gerne einen Überblick über die Stadt verschaffen, in der 
+  Du da gelandet bist. Und wie praktisch: direkt neben dem Lokal gibt es einen Lift mit der Aufschrift "Turbo-Lift zur Aussichtsplattform mit Blick über die Stadt". 
   Das klingt doch super! Du steigst in den Lift und möchtest auf den Knopf zur Aussichtsplattform drücken ... aber oh nein, funktioniert in dieser
   Stadt denn nichts wie man es gewohnt ist? <br>
   Offenbar muss man hier Figuren aus einem Deiner Lieblingsspiele befreien, bevor der Lift los fährt. Schaffst Du das? <br>
   Einen kleinen Hinweis findest Du noch: Die Reihenfolge ist egal: Jede Figur wird befreit, wenn du ihr richtiges Feld auswählst. In jeder Reihe, Spalte und jedem Symbol
   versteckt sich genau eine Figur und die Figuren berühren sich nicht – auch nicht diagonal.
 
-<div class="controls">
+<!-- <div class="controls">
   <label for="gridSize">Rastergröße:</label>
   <select id="gridSize">
     <option value="4">4 × 4 – leicht</option>
@@ -152,13 +152,14 @@
     <option value="12">12 × 12</option>
   </select>
 </div>
+-->
 
 <div id="targets" aria-label="Figuren hinter Gittern"></div>
 <div id="status">Bereit zum Starten.</div>
 <div id="progress"><div id="progressFill"></div></div>
 <div id="board" aria-label="Spielfeld"></div>
-<button id="start">Neues Rätsel</button>
-<button id="solutionToggle">Lösung anzeigen</button>
+<button id="start">Lift zurücksetzen</button>
+<!-- <button id="solutionToggle">Lösung anzeigen</button> -->
 <div id="win"><h2>🎉 Geschafft!</h2><p>Du hast alle Figuren richtig gefunden.</p></div>
 
 <script>
@@ -186,7 +187,7 @@ const statusEl = document.getElementById("status");
 const progressFill = document.getElementById("progressFill");
 const startButton = document.getElementById("start");
 const solutionButton = document.getElementById("solutionToggle");
-const gridSizeSelect = document.getElementById("gridSize");
+const gridSizeSelect = RASTER_GROESSE; /* document.getElementById("gridSize"); */
 const winBox = document.getElementById("win");
 
 let n = RASTER_GROESSE;
@@ -422,10 +423,10 @@ function chooseCell(cell, row, col) {
     // Die vollständige Lösung bleibt bis zum Start eines neuen Rätsels sichtbar.
     solutionVisible = true;
     board.classList.add("solution-visible");
-    solutionButton.textContent = "Lösung wird angezeigt";
-    solutionButton.disabled = true;
+/*    solutionButton.textContent = "Lösung wird angezeigt";
+    solutionButton.disabled = true; */
 
-    statusEl.textContent = "Leider falsch! Die richtige Lösung ist eingeblendet. Starte mit ‚Neues Rätsel‘ eine neue Runde.";
+    statusEl.textContent = "Verdammt - Du hast einen Boxhandschuh befreit, der Dich unsanft aus dem Lift befördert. Wo Deine Freunde gefangen sind, siehst Du nur mehr von außen. Aber glücklicherweise scheinst Du den Lift resetten zu können, um es vielleicht noch einmal zu probieren?";
     return;
   }
 
@@ -436,7 +437,7 @@ function chooseCell(cell, row, col) {
   updateProgress();
 
   if (found === n) {
-    statusEl.textContent = "Alle Figuren gefunden!";
+    statusEl.textContent = "Juhu - Du hast alle Deine Freunde befreit!";
     winBox.style.display = "block";
     locked = false;
   } else {
@@ -453,8 +454,8 @@ function resetPuzzle() {
   foundRows = new Set();
   solutionVisible = false;
 board.classList.remove("solution-visible");
-solutionButton.textContent = "Lösung anzeigen";
-  solutionButton.disabled = false;
+/* solutionButton.textContent = "Lösung anzeigen";
+  solutionButton.disabled = false; */
   locked = false;
   winBox.style.display = "none";
   solution = createSolution(n);
@@ -473,7 +474,7 @@ solutionButton.textContent = "Lösung anzeigen";
 }
 
 function startPuzzle() {
-  n = Number(gridSizeSelect.value);
+  n = RASTER_GROESSE; /* Number(gridSizeSelect.value); */
   if (FIGUREN_DATEIEN.length < n) {
     statusEl.textContent = `Bitte trage mindestens ${n} Dateinamen in FIGUREN_DATEIEN ein.`;
     return;
@@ -489,8 +490,8 @@ function startPuzzle() {
   foundRows = new Set();
   solutionVisible = false;
 board.classList.remove("solution-visible");
-solutionButton.textContent = "Lösung anzeigen";
-  solutionButton.disabled = false;
+/* solutionButton.textContent = "Lösung anzeigen";
+  solutionButton.disabled = false; */
   locked = false;
   solution = createSolution(n);
 
@@ -507,10 +508,10 @@ solutionButton.textContent = "Lösung anzeigen";
   startButton.disabled = false;
 }
 
-gridSizeSelect.value = String(RASTER_GROESSE);
-gridSizeSelect.addEventListener("change", startPuzzle);
+/*gridSizeSelect.value = String(RASTER_GROESSE);
+ gridSizeSelect.addEventListener("change", startPuzzle); */
 startButton.addEventListener("click", startPuzzle);
-solutionButton.addEventListener("click", toggleSolution);
+/* solutionButton.addEventListener("click", toggleSolution); */
 
 // First randomized puzzle is generated automatically.
 startPuzzle();
