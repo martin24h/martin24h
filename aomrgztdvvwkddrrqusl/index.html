@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <title>7. Dezember</title>
+  <link rel="stylesheet" href="https://martin24h.github.io/martin24h/akcss/inc.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #111a2e;
+    --panel: #1b2944;
+    --cell: #263653;
+    --line: #7183a6;
+    --gold: #f4d47d;
+    --text: #f7f8fc;
+    --accent: #73d6a0;
+  }
+  body {
+    margin: 0; padding: 18px;
+    background: var(--bg); color: var(--text);
+    font: 16px/1.45 Arial, sans-serif; text-align: center;
+  }
+  h1 { color: var(--gold); margin: 8px 0 10px; }
+  #anleitung { max-width: 760px; margin: 0 auto 18px; }
+  #targets {
+    display: flex; justify-content: center; flex-wrap: wrap; gap: 10px;
+    max-width: 900px; margin: 0 auto 18px;
+  }
+  .target {
+    position: relative; width: 76px; height: 76px; padding: 4px;
+    background: #fff; border: 2px solid #7d8eac; border-radius: 10px;
+    overflow: hidden; transition: border-color .2s, transform .2s;
+  }
+  .target img { width: 100%; height: 100%; object-fit: contain; }
+  .target .bars {
+    position: absolute; inset: 0; display: flex; gap: 3px;
+    padding: 2px; transition: opacity .3s;
+  }
+  .target .bars span { flex: 1; background: #35425c; border: 1px solid #8290aa; }
+  .target.revealed .bars { opacity: 0; pointer-events: none; }
+  .target.current { border-color: var(--gold); transform: translateY(-3px); }
+  .target.revealed { border-color: var(--accent); }
+  #status { min-height: 28px; color: var(--gold); font-weight: bold; margin: 10px auto; }
+  #progress { max-width: 600px; height: 12px; margin: 0 auto 16px; background: #34415c; border-radius: 20px; overflow: hidden; }
+  #progressFill { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  #board {
+    --n: 6;
+    display: grid;
+    grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+    width: min(92vw, 760px);
+    aspect-ratio: 1;
+    margin: 0 auto;
+    border: 2px solid var(--line);
+    background: var(--panel);
+    touch-action: manipulation;
+  }
+ .cell {
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-right: 1px solid #667794;
+  border-bottom: 1px solid #667794;
+
+  background: var(--cell);
+  cursor: pointer;
+  padding: 0;
+
+  font-size: clamp(15px, 5.5vw, 38px);
+  line-height: 1;
+
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  }
+  .cell:nth-child(odd) { background: #2b3b59; }
+  .cell:focus-visible { outline: 3px solid var(--gold); outline-offset: -3px; z-index: 2; }
+  .cell .symbol {
+  pointer-events: none;
+
+  color: #fff3a6;
+  font-size: 1.15em;
+  font-weight: 900;
+
+  -webkit-text-stroke: 1px #111a2e;
+
+  text-shadow:
+    0 0 2px #ffffff,
+    0 0 5px #f4d47d;
+
+  transform: scale(1.08);
+  }
+  .cell.correct { background: #286044 !important; }
+  .cell.wrong { background: #7c343b !important; }
+  .cell .symbol { pointer-events: none; }
+  .cell .figure {
+    position: absolute; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px);
+    object-fit: contain; pointer-events: none; display: none;
+  }
+  .cell.found .symbol { display: block; }
+  .cell.found .figure { display: none; }
+  button {
+    margin: 16px 5px; padding: 12px 24px; border: 0; border-radius: 9px;
+    background: var(--gold); color: #172039; font-size: 16px; font-weight: bold; cursor: pointer;
+  }
+  button:disabled { opacity: .5; cursor: wait; }
+  #win { display: none; margin: 18px auto; max-width: 650px; background: #214b39; border-radius: 12px; padding: 18px; }
+  .controls { margin: 10px auto 16px; }
+  label { color: #dce5f6; }
+  select { margin-left: 8px; padding: 7px; border-radius: 7px; font-size: 16px; }
+  @media (max-width: 500px) {
+    body { padding: 10px; }
+    .target { width: 56px; height: 56px; }
+    #board { width: 96vw; }
+    .cell { font-size: clamp(13px, 6vw, 30px); }
+  }
+  /* Lösung sichtbar machen: Die Klasse liegt auf dem gesamten Spielfeld. */
+#board.solution-visible .cell[data-has-figure="true"] .figure {
+  display: block;
+}
+
+#board.solution-visible .cell[data-has-figure="true"] .symbol {
+  display: none;
+}
+</style>
+</head>
+<body>
+<p>
+  7. Dezember ... Dein neuer Bestell-Code von gestern hat im Lokal leider doch nicht nochmals funktioniert. Aber halb so schlimm, Du bist ohnehin 
+  noch immer ziemlich satt. Allerdings wird es ein wenig fad und Du würdest Dir gerne einen Überblick über die Stadt verschaffen, in der 
+  Du da gelandet bist. Und wie praktisch: direkt neben dem Lokal gibt es einen Lift mit der Aufschrift "Zur Aussichtsplattform mit Blick über die Stadt". 
+  Das klingt doch super! Du steigst in den Lift und möchtest auf den Knopf zur Aussichtsplattform drücken ... aber oh nein, funktioniert in dieser
+  Stadt denn nichts wie man es gewohnt ist? <br>
+  Offenbar muss man hier Figuren aus einem Deiner Lieblingsspiele befreien, bevor der Lift los fährt. Schaffst Du das? <br>
+  Einen kleinen Hinweis findest Du noch: Die Reihenfolge ist egal: Jede Figur wird befreit, wenn du ihr richtiges Feld auswählst. In jeder Reihe, Spalte und jedem Symbol
+  versteckt sich genau eine Figur und die Figuren berühren sich nicht – auch nicht diagonal.
+
+<div class="controls">
+  <label for="gridSize">Rastergröße:</label>
+  <select id="gridSize">
+    <option value="4">4 × 4 – leicht</option>
+    <option value="5">5 × 5 – leicht</option>
+    <option value="6">6 × 6 – leicht</option>
+    <option value="7">7 × 7</option>
+    <option value="8">8 × 8</option>
+    <option value="9">9 × 9</option>
+    <option value="10">10 × 10 – schwer</option>
+    <option value="11">11 × 11</option>
+    <option value="12">12 × 12</option>
+  </select>
+</div>
+
+<div id="targets" aria-label="Figuren hinter Gittern"></div>
+<div id="status">Bereit zum Starten.</div>
+<div id="progress"><div id="progressFill"></div></div>
+<div id="board" aria-label="Spielfeld"></div>
+<button id="start">Neues Rätsel</button>
+<button id="solutionToggle">Lösung anzeigen</button>
+<div id="win"><h2>🎉 Geschafft!</h2><p>Du hast alle Figuren richtig gefunden.</p></div>
+
+<script>
+// ================== KONFIGURATION ==================
+// Anzahl der Reihen/Spalten. Du kannst diesen Wert z. B. auf 6 oder 10 setzen.
+// Die Auswahl im Menü überschreibt den Wert während des Spiels.
+const RASTER_GROESSE = 4;
+
+// Eigene JPG-Dateien hier eintragen. Benenne die Dateien figur1.jpg usw.
+// Lege sie in einen Ordner "figuren" neben dieser HTML-Datei.
+// Es muss genau eine Bilddatei je Raster-Reihe geben.
+const FIGUREN_DATEIEN = [
+  "figur1.webp", "figur2.webp", "figur3.webp", "figur4.webp",
+  "figur5.webp", "figur6.webp", "figur7.webp", "figur8.jpg",
+  "figur9.jpg", "figur10.jpg", "figur11.jpg", "figur12.jpg"
+];
+
+// Symbole: Anzahl muss mindestens so groß sein wie die Rastergröße.
+// Du kannst Symbole austauschen oder ergänzen.
+const SYMBOLE = ["♥", "◆", "♦", "■", "●", "▲", "✦", "⬟", "✚", "★", "⬢", "♣"];
+
+const board = document.getElementById("board");
+const targets = document.getElementById("targets");
+const statusEl = document.getElementById("status");
+const progressFill = document.getElementById("progressFill");
+const startButton = document.getElementById("start");
+const solutionButton = document.getElementById("solutionToggle");
+const gridSizeSelect = document.getElementById("gridSize");
+const winBox = document.getElementById("win");
+
+let n = RASTER_GROESSE;
+let solution = [];       // solution[row] = column for the hidden figure
+let symbolGrid = [];    // symbol displayed in each cell
+let found = 0;
+let foundRows = new Set(); // Bereits gefundene Figuren (unabhängig von der Reihenfolge)
+let locked = false;
+let solutionVisible = false;
+
+// Erzeugt zusammenhängende Symbolgruppen.
+// Jedes Symbol startet auf seiner versteckten Figur.
+// Alle weiteren Felder werden an bestehende Gruppen angefügt.
+
+function createConnectedSymbolGrid(size, colsByRow) {
+  const grid = Array.from(
+    { length: size },
+    () => Array(size).fill(-1)
+  );
+
+  // Jede versteckte Figur ist der Startpunkt
+  // ihrer eigenen Symbolgruppe.
+  for (let row = 0; row < size; row++) {
+    grid[row][colsByRow[row]] = row;
+  }
+
+  const directions = [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1]
+  ];
+
+  let remaining = size * size - size;
+
+  // Mehrere Versuche, falls eine zufällige Verteilung
+  // in einer Sackgasse endet.
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const current = grid.map(row => [...row]);
+    let left = remaining;
+
+    while (left > 0) {
+      const options = [];
+
+      for (let row = 0; row < size; row++) {
+        for (let col = 0; col < size; col++) {
+
+          if (current[row][col] !== -1) continue;
+
+          const possibleSymbols = new Set();
+
+          for (const [dr, dc] of directions) {
+            const r = row + dr;
+            const c = col + dc;
+
+            if (
+              r >= 0 && r < size &&
+              c >= 0 && c < size &&
+			  current[r][c] !== -1 &&
+			  current[r][c] !== 0
+			  ) {
+              possibleSymbols.add(current[r][c]);
+            }
+          }
+
+          for (const symbol of possibleSymbols) {
+            options.push({ row, col, symbol });
+          }
+        }
+      }
+
+      // Keine Erweiterung mehr möglich:
+      // Dieser Versuch ist gescheitert.
+      if (options.length === 0) break;
+
+      const choice =
+        options[Math.floor(Math.random() * options.length)];
+
+      current[choice.row][choice.col] = choice.symbol;
+      left--;
+    }
+
+    // Alle Felder wurden erfolgreich zugeordnet.
+    if (left === 0) {
+      return current;
+    }
+  }
+
+  return null;
+}
+
+// Returns a randomized, valid placement:
+// one figure per row/column/symbol; no neighboring figures, including diagonals.
+// Cell symbols are a cyclic Latin square: (row + column) % n.
+function createSolution(size) {
+  const colsByRow = Array(size).fill(-1);
+  const usedColumns = new Set();
+
+  // A hidden figure's symbol is its row index. Thus every figure has
+  // a different symbol. Symbols in the other cells are randomized.
+  function search(row) {
+    if (row === size) return true;
+
+    const options = Array.from({ length: size }, (_, c) => c);
+    for (let i = options.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [options[i], options[j]] = [options[j], options[i]];
+    }
+
+    for (const col of options) {
+      if (usedColumns.has(col)) continue;
+      // No two figures in neighboring rows may be side-by-side
+      // or diagonally adjacent.
+      if (row > 0 && Math.abs(col - colsByRow[row - 1]) <= 1) continue;
+
+      colsByRow[row] = col;
+      usedColumns.add(col);
+
+      if (search(row + 1)) return true;
+
+      colsByRow[row] = -1;
+      usedColumns.delete(col);
+    }
+    return false;
+  }
+
+  if (!search(0)) return null;
+
+	// Erzeuge zusammenhängende Symbolgruppen.
+	symbolGrid = createConnectedSymbolGrid(size, colsByRow);
+
+	if (!symbolGrid) return null;
+
+  return colsByRow;
+}
+
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+function buildTargets() {
+  targets.innerHTML = "";
+  for (let row = 0; row < n; row++) {
+    const tile = document.createElement("div");
+    tile.className = "target" + (row === 0 ? " current" : "");
+    const img = document.createElement("img");
+    img.src = "figuren/" + FIGUREN_DATEIEN[row];
+    img.alt = "Spielfigur " + (row + 1);
+    img.onerror = () => {
+      statusEl.textContent = "Bild fehlt: figuren/" + FIGUREN_DATEIEN[row];
+    };
+    const bars = document.createElement("div");
+    bars.className = "bars";
+    for (let i = 0; i < 5; i++) bars.appendChild(document.createElement("span"));
+    tile.append(img, bars);
+    targets.appendChild(tile);
+  }
+}
+
+function buildBoard() {
+  board.innerHTML = "";
+  board.style.setProperty("--n", n);
+
+  for (let row = 0; row < n; row++) {
+    for (let col = 0; col < n; col++) {
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "cell";
+      cell.dataset.row = row;
+      cell.dataset.col = col;
+
+      const symbolIndex = symbolGrid[row][col];
+      const symbol = document.createElement("span");
+      symbol.className = "symbol";
+      symbol.textContent = SYMBOLE[symbolIndex] || "◇";
+      cell.appendChild(symbol);
+
+      const figure = document.createElement("img");
+      figure.className = "figure";
+      figure.alt = "";
+      if (col === solution[row]) {
+        figure.src = "figuren/" + FIGUREN_DATEIEN[row];
+        cell.dataset.hasFigure = "true";
+      } else {
+        cell.dataset.hasFigure = "false";
+      }
+      cell.appendChild(figure);
+
+      cell.addEventListener("click", () => chooseCell(cell, row, col));
+      board.appendChild(cell);
+    }
+  }
+}
+
+function updateProgress() {
+  progressFill.style.width = (found / n * 100) + "%";
+  const tiles = targets.querySelectorAll(".target");
+  tiles.forEach((tile, i) => {
+    const isFound = foundRows.has(i);
+    tile.classList.toggle("revealed", isFound);
+    tile.classList.toggle("current", !isFound);
+  });
+}
+
+function toggleSolution() {
+  // Nach einem Fehler bleibt die Lösung bis zum Neustart sichtbar.
+  if (locked) return;
+
+  solutionVisible = !solutionVisible;
+  board.classList.toggle("solution-visible", solutionVisible);
+
+  solutionButton.textContent = solutionVisible
+    ? "Lösung ausblenden"
+    : "Lösung anzeigen";
+}
+
+function chooseCell(cell, row, col) {
+  if (locked || found >= n) return;
+
+  // Jede Figur darf in beliebiger Reihenfolge gefunden werden.
+  // Eine bereits gefundene Figur kann nicht erneut angeklickt werden.
+  // if (foundRows.has(row)) return;
+  const correct = col === solution[row];
+
+  if (!correct) {
+    locked = true;
+    cell.classList.add("wrong");
+
+    // Die vollständige Lösung bleibt bis zum Start eines neuen Rätsels sichtbar.
+    solutionVisible = true;
+    board.classList.add("solution-visible");
+    solutionButton.textContent = "Lösung wird angezeigt";
+    solutionButton.disabled = true;
+
+    statusEl.textContent = "Leider falsch! Die richtige Lösung ist eingeblendet. Starte mit ‚Neues Rätsel‘ eine neue Runde.";
+    return;
+  }
+
+  locked = true;
+  cell.classList.add("correct", "found");
+  foundRows.add(row);
+  found = foundRows.size;
+  updateProgress();
+
+  if (found === n) {
+    statusEl.textContent = "Alle Figuren gefunden!";
+    winBox.style.display = "block";
+    locked = false;
+  } else {
+    statusEl.textContent = "Richtig! Du kannst jetzt eine beliebige andere Figur suchen.";
+    setTimeout(() => {
+      locked = false;
+      statusEl.textContent = "Finde eine beliebige der noch übrigen Figuren.";
+    }, 300);
+  }
+}
+
+function resetPuzzle() {
+  found = 0;
+  foundRows = new Set();
+  solutionVisible = false;
+board.classList.remove("solution-visible");
+solutionButton.textContent = "Lösung anzeigen";
+  solutionButton.disabled = false;
+  locked = false;
+  winBox.style.display = "none";
+  solution = createSolution(n);
+
+  if (!solution) {
+    statusEl.textContent = "Für diese Rastergröße konnte keine Lösung gefunden werden. Bitte kleinere Größe wählen.";
+    startButton.disabled = false;
+    return;
+  }
+
+  buildTargets();
+  buildBoard();
+  updateProgress();
+  statusEl.textContent = "Neues Rätsel: Finde eine beliebige Figur.";
+  startButton.disabled = false;
+}
+
+function startPuzzle() {
+  n = Number(gridSizeSelect.value);
+  if (FIGUREN_DATEIEN.length < n) {
+    statusEl.textContent = `Bitte trage mindestens ${n} Dateinamen in FIGUREN_DATEIEN ein.`;
+    return;
+  }
+  if (SYMBOLE.length < n) {
+    statusEl.textContent = `Bitte ergänze mindestens ${n} Symbole in SYMBOLE.`;
+    return;
+  }
+
+  startButton.disabled = true;
+  winBox.style.display = "none";
+  found = 0;
+  foundRows = new Set();
+  solutionVisible = false;
+board.classList.remove("solution-visible");
+solutionButton.textContent = "Lösung anzeigen";
+  solutionButton.disabled = false;
+  locked = false;
+  solution = createSolution(n);
+
+  if (!solution) {
+    statusEl.textContent = "Es konnte keine passende Lösung erzeugt werden. Teste eine kleinere Rastergröße.";
+    startButton.disabled = false;
+    return;
+  }
+
+  buildTargets();
+  buildBoard();
+  updateProgress();
+  statusEl.textContent = "Finde eine beliebige der versteckten Figuren.";
+  startButton.disabled = false;
+}
+
+gridSizeSelect.value = String(RASTER_GROESSE);
+gridSizeSelect.addEventListener("change", startPuzzle);
+startButton.addEventListener("click", startPuzzle);
+solutionButton.addEventListener("click", toggleSolution);
+
+// First randomized puzzle is generated automatically.
+startPuzzle();
+</script>
+</body>
+</html>
