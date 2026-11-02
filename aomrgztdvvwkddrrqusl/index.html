@@ -160,7 +160,8 @@
 <div id="board" aria-label="Spielfeld"></div>
 <button id="start">Lift zurücksetzen</button>
 <!-- <button id="solutionToggle">Lösung anzeigen</button> -->
-<div id="win"><h2>🎉 Geschafft!</h2><p>Du hast alle Figuren richtig gefunden.</p></div>
+<div id="win"><h2>🎉 Geschafft!</h2><p>Du hast alle Deine Freunde befreit. Dankbar überreichen sie Dir Dein Ticket zur Aussichtsplattform
+<strong>C-1</strong> und der Lift setzt sich in Bewegung.</p></div>
 
 <script>
 // ================== KONFIGURATION ==================
@@ -441,10 +442,10 @@ function chooseCell(cell, row, col) {
     winBox.style.display = "block";
     locked = false;
   } else {
-    statusEl.textContent = "Richtig! Du kannst jetzt eine beliebige andere Figur suchen.";
+    statusEl.textContent = "Super - die Befreiung war erfolgreich! Weiter so!";
     setTimeout(() => {
       locked = false;
-      statusEl.textContent = "Finde eine beliebige der noch übrigen Figuren.";
+/*      statusEl.textContent = "Finde eine beliebige der noch übrigen Figuren.";*/
     }, 300);
   }
 }
