@@ -134,25 +134,22 @@
   Du da gelandet bist. Und wie praktisch: direkt neben dem Lokal gibt es einen Lift mit der Aufschrift "Turbo-Lift zur Aussichtsplattform mit Blick über die Stadt". 
   Das klingt doch super! Du steigst in den Lift und möchtest auf den Knopf zur Aussichtsplattform drücken ... aber oh nein, funktioniert in dieser
   Stadt denn nichts wie man es gewohnt ist? <br>
-  Offenbar muss man hier Figuren aus einem Deiner Lieblingsspiele befreien, bevor der Lift los fährt. Schaffst Du das? <br>
-  Einen kleinen Hinweis findest Du noch: Die Reihenfolge ist egal: Jede Figur wird befreit, wenn du ihr richtiges Feld auswählst. In jeder Reihe, Spalte und jedem Symbol
-  versteckt sich genau eine Figur und die Figuren berühren sich nicht – auch nicht diagonal.
+  Offenbar muss man hier Figuren aus einem Deiner Lieblingsspiele befreien, bevor der Lift los fährt. Schaffst Du mindestens sechs Deiner Freunde zu befreien? <br>
+  Einen kleinen Hinweis findest Du noch: Die Reihenfolge ist egal: Jede Figur wird befreit, wenn du ihre Gefängniszelle öffnest. In jeder Reihe, Spalte und jedem Symbol
+  ist genau eine Figur gefangen und die Figuren sind nicht nebeneinander gefangen – auch nicht diagonal.
 
-<!-- <div class="controls">
-  <label for="gridSize">Rastergröße:</label>
+<div class="controls">
+  <label for="gridSize">Gefängnisgröße:</label>
   <select id="gridSize">
-    <option value="4">4 × 4 – leicht</option>
-    <option value="5">5 × 5 – leicht</option>
-    <option value="6">6 × 6 – leicht</option>
-    <option value="7">7 × 7</option>
-    <option value="8">8 × 8</option>
-    <option value="9">9 × 9</option>
-    <option value="10">10 × 10 – schwer</option>
-    <option value="11">11 × 11</option>
-    <option value="12">12 × 12</option>
+    <option value="4">4x4 - zum Üben</option>
+    <option value="5">5×5 – zu leicht</option>
+    <option value="6">6×6 – schwer genug</option>
+    <option value="7">7×7 - schwererer</option>
+    <option value="8">8×8 - mutig</option>
+    <option value="9">9×9 - uiuiui</option>
+    <option value="10">10×10 – Größenwahn</option>
   </select>
 </div>
--->
 
 <div id="targets" aria-label="Figuren hinter Gittern"></div>
 <div id="status">Bereit zum Starten.</div>
@@ -167,15 +164,16 @@
 // ================== KONFIGURATION ==================
 // Anzahl der Reihen/Spalten. Du kannst diesen Wert z. B. auf 6 oder 10 setzen.
 // Die Auswahl im Menü überschreibt den Wert während des Spiels.
-const RASTER_GROESSE = 6;
+const RASTER_GROESSE = 4;
+const MIN_FREE=6;
 
 // Eigene JPG-Dateien hier eintragen. Benenne die Dateien figur1.jpg usw.
 // Lege sie in einen Ordner "figuren" neben dieser HTML-Datei.
 // Es muss genau eine Bilddatei je Raster-Reihe geben.
 const FIGUREN_DATEIEN = [
   "figur1.webp", "figur2.webp", "figur3.webp", "figur4.webp",
-  "figur5.webp", "figur6.webp", "figur7.webp", "figur8.jpg",
-  "figur9.jpg", "figur10.jpg", "figur11.jpg", "figur12.jpg"
+  "figur5.webp", "figur6.webp", "figur7.webp", "figur8.webp",
+  "figur9.webp", "figur10.webp", "figur11.webp", "figur12.webp"
 ];
 
 // Symbole: Anzahl muss mindestens so groß sein wie die Rastergröße.
@@ -188,7 +186,7 @@ const statusEl = document.getElementById("status");
 const progressFill = document.getElementById("progressFill");
 const startButton = document.getElementById("start");
 const solutionButton = document.getElementById("solutionToggle");
-const gridSizeSelect = RASTER_GROESSE; /* document.getElementById("gridSize"); */
+const gridSizeSelect = document.getElementById("gridSize");
 const winBox = document.getElementById("win");
 
 let n = RASTER_GROESSE;
@@ -427,7 +425,7 @@ function chooseCell(cell, row, col) {
 /*    solutionButton.textContent = "Lösung wird angezeigt";
     solutionButton.disabled = true; */
 
-    statusEl.textContent = "Verdammt - Du hast einen Boxhandschuh befreit, der Dich unsanft aus dem Lift befördert. Wo Deine Freunde gefangen sind, siehst Du nur mehr von außen. Aber glücklicherweise scheinst Du den Lift resetten zu können, um es vielleicht noch einmal zu probieren?";
+    statusEl.textContent = "Verdammt - in dieser Zelle ist ein mutierter Boxhandschuh gefangen gewesen, der Dich jetzt unsanft aus dem Lift befördert. Wo Deine Freunde gefangen sind, siehst Du nur mehr von außen. Aber glücklicherweise scheinst Du den Lift resetten zu können, um es vielleicht noch einmal zu probieren?";
     return;
   }
 
@@ -438,9 +436,14 @@ function chooseCell(cell, row, col) {
   updateProgress();
 
   if (found === n) {
-    statusEl.textContent = "Juhu - Du hast alle Deine Freunde befreit!";
-    winBox.style.display = "block";
-    locked = false;
+	if (Number(gridSizeSelect.value)>=MIN_FREE) {
+		statusEl.textContent = "Juhu - Du hast genügend Deiner Freunde befreit!";
+		winBox.style.display = "block";
+		locked = false;
+	} else {
+		statusEl.textContent = "Nicht schlecht, aber Du musst noch mehr Deiner Freunde befreien!";
+		locked = false;
+	}
   } else {
     statusEl.textContent = "Super - die Befreiung war erfolgreich! Weiter so!";
     setTimeout(() => {
@@ -475,7 +478,7 @@ board.classList.remove("solution-visible");
 }
 
 function startPuzzle() {
-  n = RASTER_GROESSE; /* Number(gridSizeSelect.value); */
+  n = Number(gridSizeSelect.value);
   if (FIGUREN_DATEIEN.length < n) {
     statusEl.textContent = `Bitte trage mindestens ${n} Dateinamen in FIGUREN_DATEIEN ein.`;
     return;
@@ -509,8 +512,8 @@ board.classList.remove("solution-visible");
   startButton.disabled = false;
 }
 
-/*gridSizeSelect.value = String(RASTER_GROESSE);
- gridSizeSelect.addEventListener("change", startPuzzle); */
+gridSizeSelect.value = String(RASTER_GROESSE);
+gridSizeSelect.addEventListener("change", startPuzzle); 
 startButton.addEventListener("click", startPuzzle);
 /* solutionButton.addEventListener("click", toggleSolution); */
 
