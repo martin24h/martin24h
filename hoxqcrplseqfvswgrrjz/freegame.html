@@ -205,28 +205,13 @@ button{padding:8px 12px;border:0;border-radius:8px;background:#36506a;color:whit
 <script>
 // Koordinaten in Wien (Latitude, Longitude)
 let people = [
-  {
-    lat: 48.2082,
-    lng: 16.3738,
-    name: 'Person am Stephansplatz',
-    freed: false,
-    marker: null,
-    imageLayer: null,
-    image: 'bilder/MT.png',
-    imageWidth: 10,
-    imageHeight: 10
-  },
-  {
-    lat: 48.2125,
-    lng: 16.3780,
-    name: 'Person am Donaukanal',
-    freed: false,
-    marker: null,
-    imageLayer: null,
-    image: 'bilder/TN.png',
-    imageWidth: 10,
-    imageHeight: 10
-  } /*,
+  {lat: 48.20049620946162, lng: 16.371567270606715, name: 'Albertina Modern',    freed: false,    marker: null,    imageLayer: null,    image: 'bilder/MT.png',    imageWidth: 10,    imageHeight: 10  },
+  {lat: 48.20256246973641, lng: 16.33755007048817, name: 'Kino am Dach',freed: false,marker: null,imageLayer: null,image: 'bilder/TN.png',imageWidth: 10,imageHeight: 10},
+/*
+48.188022309810215, 16.33545359902488, name: 'bei Eva'
+48.19385963682167, 16.355900071786163, name: 'bei Martin'
+
+
   {
     lat: 48.2035,
     lng: 16.3585,
@@ -429,7 +414,7 @@ function updateGame() {
 		status.textContent = 'Befreie alle Tropfnessis und Mäandertaler in Wien.';
 	  } else {
 		status.textContent = activeFocus
-		  ? activeFocus.name + ' im Fernrohr – freilassen?'
+		  ? activeFocus.name + ' – freilassen?'
 		  : 'Befreie alle Tropfnessis und Mäandertaler in Wien.';
 	 }
 	}
