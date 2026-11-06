@@ -5,23 +5,27 @@
 *{box-sizing:border-box}body{margin:0;background:#101923;color:#eef4f8;font:16px system-ui;display:flex;flex-direction:column;height:100vh;overflow:hidden}
 header{padding:8px 12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#192635;flex-shrink:0}
 h1{font-size:1rem;margin:0}
-button{padding:8px 12px;border:0;border-radius:8px;background:#36506a;color:white;font-weight:bold;cursor:pointer}button:disabled{opacity:.4}#free{background:#23885c}
+button{padding:8px 12px;border:0;border-radius:8px;background:#36506a;color:white;font-weight:bold;cursor:pointer;font-size:0.85rem}button:disabled{opacity:.4}#free{background:#23885c}
 .stage{flex-grow:1;position:relative;touch-action:none;background:#000;overflow:hidden}
 canvas{width:100%;height:100%;display:block}
-.hud{position:absolute;top:10px;left:10px;background:#07111ddd;padding:8px 12px;border-radius:9px;pointer-events:none;font-size:0.9rem}
-.controls{background:#192635;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0}
-.control-row{display:flex;gap:6px}
-.pad-btn{width:45px;height:40px;padding:0;display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:#243647}
-.action-row{display:flex;gap:10px;align-items:center;margin-top:4px;flex-wrap:wrap;justify-content:center}
-.hint{padding:8px 12px;color:#bdcad6;font-size:.8rem;background:#101923;flex-shrink:0;text-align:center}
+.hud{position:absolute;top:10px;left:10px;background:#07111ddd;padding:8px 12px;border-radius:9px;pointer-events:none;font-size:0.85rem}
+.controls{background:#192635;padding:8px;display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0}
+.control-row{display:flex;gap:5px}
+.pad-btn{width:48px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:#243647}
+.action-row{display:flex;gap:6px;align-items:center;margin-top:2px;justify-content:center;width:100%}
+.file-label{background:#36506a;padding:8px 12px;border-radius:8px;font-weight:bold;cursor:pointer;font-size:0.85rem;display:inline-block}
+input[type="file"]{display:none}
 </style>
 <header>
   <h1>Stadtplan-Fernrohr</h1>
-  <div><span id="zoom">1×</span> <button id="reset">Neu</button></div>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <label class="file-label">📁 Bild wählen<input type="file" id="uploadMap" accept="image/*"></label>
+    <button id="reset">Neu</button>
+  </div>
 </header>
 <div class="stage" id="stage">
   <canvas id="c"></canvas>
-  <div class="hud"><div id="status">Suche Personen...</div><div id="count">Befreit: 0 / 8</div></div>
+  <div class="hud"><div id="status">Lade ein Bild oder nutze Test-Plan.</div><div id="count">Befreit: 0 / 0</div></div>
 </div>
 
 <div class="controls">
@@ -29,60 +33,123 @@ canvas{width:100%;height:100%;display:block}
     <button class="pad-btn" id="move-nw">↖</button>
     <button class="pad-btn" id="move-n">↑</button>
     <button class="pad-btn" id="move-ne">↗</button>
+    <button class="pad-btn" id="minus" style="background:#4a366a">Zoom −</button>
   </div>
   <div class="control-row">
     <button class="pad-btn" id="move-w">←</button>
-    <button class="pad-btn" id="free" disabled>Freilassen</button>
+    <button class="pad-btn" id="free" disabled style="width:96px">Befreien</button>
     <button class="pad-btn" id="move-e">→</button>
+    <button class="pad-btn" id="plus" style="background:#4a366a">Zoom +</button>
   </div>
   <div class="control-row">
     <button class="pad-btn" id="move-sw">↙</button>
     <button class="pad-btn" id="move-s">↓</button>
     <button class="pad-btn" id="move-se">↘</button>
-  </div>
-  <div class="action-row">
-    <button id="minus">Zoom −</button>
-    <button id="plus">Zoom +</button>
+    <span id="zoom" style="display:flex;align-items:center;padding:0 10px;font-weight:bold;font-size:0.9rem;color:#bdcad6;">1×</span>
   </div>
 </div>
 
-<div class="hint">Nutze die Pfeiltasten zum Verschieben der Karte im Fernrohr. Personen sind erst bei starkem Zoom sichtbar!</div>
-
 <script>
-(()=>{const c=document.querySelector('#c'),ctx=c.getContext('2d'),stage=document.querySelector('#stage'),status=document.querySelector('#status'),count=document.querySelector('#count'),free=document.querySelector('#free'),zoomText=document.querySelector('#zoom');
-const SIZE=6000,SHOW=3.8;let w=0,h=0,dpr=1,z=.35,x=3000,y=3000,focus=null;
-const spots=[[720,920],[1880,1320],[3270,790],[4720,1710],[980,3610],[2520,4380],[4110,3520],[5200,4920]];
+(()=>{
+// ==========================================
+// 1. HIER KANNST DU DIE KOORDINATEN EINTRAGEN (X und Y)
+// ==========================================
+const customSpots = [
+  { x: 1200, y: 1500 },
+  { x: 3000, y: 3000 },
+  { x: 4500, y: 3500 },
+  { x: 1500, y: 4800 },
+  { x: 5000, y: 5000 }
+];
+
+const c=document.querySelector('#c'),ctx=c.getContext('2d'),stage=document.querySelector('#stage'),status=document.querySelector('#status'),count=document.querySelector('#count'),free=document.querySelector('#free'),zoomText=document.querySelector('#zoom');
+
+let SIZE_W=6000, SIZE_H=6000; // Standardgrösse, passt sich bei Bild-Upload automatisch an
+const SHOW=3.8;
+let w=0,h=0,dpr=1,z=.35,x=3000,y=3000,focus=null;
+let mapImage=null;
 let people=[];
-function reset(){people=spots.map((p,i)=>({x:p[0],y:p[1],name:'Person '+(i+1),freed:false}));z=.35;x=y=3000;count.textContent='Befreit: 0 / 8';draw()}
-function resize(){let r=stage.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,2);w=r.width;h=r.height;c.width=w*dpr;c.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);draw()}
+
+function reset(){
+  people=customSpots.map((p,i)=>({x:p.x,y:p.y,name:'Person '+(i+1),freed:false}));
+  z=.35; x=SIZE_W/2; y=SIZE_H/2;
+  count.textContent='Befreit: 0 / '+people.length;
+  draw();
+}
+
+function resize(){
+  let r=stage.getBoundingClientRect();
+  dpr=Math.min(devicePixelRatio||1,2);
+  w=r.width; h=r.height;
+  c.width=w*dpr; c.height=h*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  draw();
+}
+
 function screen(a,b){return [(a-x)*z+w/2,(b-y)*z+h/2]}
 function world(a,b){return [(a-w/2)/z+x,(b-h/2)/z+y]}
-function rand(n){let v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v)}
 
 function map(){
-  ctx.fillStyle='#000';ctx.fillRect(0,0,w,h); // Alles außerhalb schwarz
+  ctx.fillStyle='#000';ctx.fillRect(0,0,w,h); // Alles ausserhalb des Fernrohrs ist schwarz
   
   let cx=w/2,cy=h/2,r=Math.min(w,h)*.32;
   ctx.save();
   ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip(); // Nur im Fernrohr zeichnen
 
-  ctx.fillStyle='#d8d5c7';ctx.fillRect(0,0,w,h);
-  let a=world(0,0),b=world(w,h),l=Math.max(0,a[0]),t=Math.max(0,a[1]),r_w=Math.min(SIZE,b[0]),bt=Math.min(SIZE,b[1]);
-  for(let i=0;i<22;i++){let bx=rand(i+5)*SIZE,by=rand(i+50)*SIZE,bw=240+rand(i+90)*500,bh=180+rand(i+140)*420;if(bx+bw<l||bx>r_w||by+bh<t||by>bt)continue;let p=screen(bx,by);ctx.fillStyle=i%3?'#c7d7b7':'#b8cfa8';ctx.fillRect(p[0],p[1],bw*z,bh*z)}
-  ctx.lineCap='round';for(let i=0;i<=SIZE;i+=300){let p=screen(i,0),q=screen(i,SIZE);ctx.strokeStyle='#f8f4e7';ctx.lineWidth=Math.max(1,36*z);ctx.beginPath();ctx.moveTo(...p);ctx.lineTo(...q);ctx.stroke();p=screen(0,i);q=screen(SIZE,i);ctx.beginPath();ctx.moveTo(...p);ctx.lineTo(...q);ctx.stroke()}
-  for(let bx=Math.floor(l/150)*150;bx<r_w;bx+=150)for(let by=Math.floor(t/150)*150;by<bt;by+=150){if(rand(bx+by)>.68)continue;let p=screen(bx+14,by+14);ctx.fillStyle=rand(bx-by)>.5?'#b9b6ac':'#c4c0b5';ctx.fillRect(p[0],p[1],(80+rand(bx+by)*45)*z,(70+rand(bx-by)*45)*z)}
-  if(z>.65){ctx.fillStyle='#65736b';ctx.font=Math.max(8,11*z)+'px sans-serif';for(let i=0;i<24;i++){let a1=rand(i+1200)*SIZE,b1=rand(i+1500)*SIZE;if(a1<l||a1>r_w||b1<t||b1>bt)continue;let p=screen(a1,b1);ctx.fillText(['PARK','MARKT','PLATZ','ALTSTADT'][i%4],...p)}}
+  if(mapImage){
+    // ECHTES BILD ZEICHNEN
+    let p1 = screen(0, 0);
+    let p2 = screen(SIZE_W, SIZE_H);
+    ctx.drawImage(mapImage, p1[0], p1[1], (p2[0]-p1[0]), (p2[1]-p1[1]));
+  } else {
+    // FALLBACK-TEST-KARTENZEICHNUNG (falls kein Bild hochgeladen)
+    ctx.fillStyle='#d8d5c7';ctx.fillRect(0,0,w,h);
+    let a=world(0,0),b=world(w,h),l=Math.max(0,a[0]),t=Math.max(0,a[1]),r_w=Math.min(SIZE_W,b[0]),bt=Math.min(SIZE_H,b[1]);
+    for(let i=0;i<15;i++){
+      let p=screen(i*400, i*350);
+      ctx.fillStyle='#b8cfa8';ctx.fillRect(p[0],p[1],300*z,250*z);
+    }
+  }
+
+  // Personen einzeichnen (wenn stark genug gezoomt)
+  if(z>=SHOW) people.forEach(drawPerson);
   
-  if(z>=SHOW)people.forEach(drawPerson);
   ctx.restore();
 }
 
-function drawPerson(p){let q=screen(p.x,p.y),r=Math.max(3,7*z);ctx.save();ctx.translate(...q);ctx.fillStyle=p.freed?'#268b60':'#e8b54b';ctx.beginPath();ctx.arc(0,-r*1.2,r*.6,0,Math.PI*2);ctx.fill();ctx.fillStyle=p.freed?'#16734b':'#477ca8';ctx.fillRect(-r*.55,-r*.55,r*1.1,r*1.3);ctx.strokeStyle='#26323a';ctx.lineWidth=Math.max(1,r*.18);ctx.beginPath();ctx.moveTo(-r*.3,r*.7);ctx.lineTo(-r*.6,r*1.35);ctx.moveTo(r*.3,r*.7);ctx.lineTo(r*.6,r*1.35);ctx.stroke();if(!p.freed){ctx.strokeStyle='#303943';ctx.lineWidth=Math.max(1,z*.5);ctx.strokeRect(-r*1.15,-r*1.7,r*2.3,r*3.3);for(let k=-1;k<=1;k++){ctx.beginPath();ctx.moveTo(k*r*.55,-r*1.7);ctx.lineTo(k*r*.55,r*1.6);ctx.stroke()}}ctx.restore()}
+function drawPerson(p){
+  let q=screen(p.x,p.y), r=Math.max(6, 12*z);
+  ctx.save();
+  ctx.translate(...q);
+  
+  // Körper / Gesicht der Person
+  ctx.fillStyle=p.freed?'#268b60':'#e8b54b';
+  ctx.beginPath();ctx.arc(0,-r*0.8,r*0.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=p.freed?'#16734b':'#477ca8';
+  ctx.fillRect(-r*0.4,-r*0.3,r*0.8,r*1.1);
+
+  // GITTER / KÄFIG (wenn nicht freigelassen)
+  if(!p.freed){
+    ctx.strokeStyle='#d03030';
+    ctx.lineWidth=Math.max(2, z*0.8);
+    // Gitterstäbe über die Person legen
+    ctx.strokeRect(-r*1.2,-r*1.6,r*2.4,r*2.8);
+    for(let k=-0.6;k<=0.6;k+=0.6){
+      ctx.beginPath();
+      ctx.moveTo(k*r,-r*1.6);
+      ctx.lineTo(k*r,r*1.2);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
 
 function scope(){
   let cx=w/2,cy=h/2,r=Math.min(w,h)*.32;
   ctx.save();
+  // Äusserer Fernrohr-Ring
   ctx.strokeStyle='#e0f4ff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+  // Fadenkreuz in der Mitte
   ctx.lineWidth=1.5;ctx.strokeStyle='#e0f4ffaa';ctx.beginPath();
   ctx.moveTo(cx-r*.15,cy);ctx.lineTo(cx+r*.15,cy);
   ctx.moveTo(cx,cy-r*.15);ctx.lineTo(cx,cy+r*.15);
@@ -93,22 +160,41 @@ function scope(){
 function update(){
   focus=null;
   if(z>=SHOW){
-    let rr=Math.min(w,h)*.32*.82;
+    let rr=Math.min(w,h)*.32*0.75;
     for(let p of people){
       if(p.freed)continue;
       let q=screen(p.x,p.y);
-      if(Math.hypot(q[0]-w/2,q[1]-h/2)<rr){focus=p;break}
+      if(Math.hypot(q[0]-w/2,q[1]-h/2)<rr){focus=p;break;}
     }
   }
   free.disabled=!focus;
-  status.textContent=focus?focus.name+' im Fokuskreis!':z<SHOW?'Zoome näher heran, um Personen zu sehen.':'Suche Personen im Stadtplan.';
+  status.textContent=focus?focus.name+' im Fokuskreis!':z<SHOW?'Zoome näher heran, um das Gitter zu sehen.':'Suche Personen im Stadtplan.';
 }
 
-function draw(){if(!w||!h)return;ctx.setTransform(dpr,0,0,dpr,0,0);map();scope();zoomText.textContent=z.toFixed(1)+'×';update()}
-function clamp(){x=Math.max(-w/(2*z),Math.min(SIZE+w/(2*z),x));y=Math.max(-h/(2*z),Math.min(SIZE+h/(2*z),y))}
-function zoomAt(n){z=Math.max(.12,Math.min(12,n));clamp();draw()}
+function draw(){if(!w||!h)return;ctx.setTransform(dpr,0,0,dpr,0,0);map();scope();zoomText.textContent=z.toFixed(1)+'×';update();}
+function clamp(){x=Math.max(-w/(2*z),Math.min(SIZE_W+w/(2*z),x));y=Math.max(-h/(2*z),Math.min(SIZE_H+h/(2*z),y));}
+function zoomAt(n){z=Math.max(.12,Math.min(15,n));clamp();draw();}
 
-// Bewegungs-Logik für die Buttons
+// Bild-Upload Event
+document.querySelector('#uploadMap').addEventListener('change', (e)=>{
+  let file=e.target.files[0];
+  if(!file)return;
+  let reader=new FileReader();
+  reader.onload=(evt)=>{
+    let img=new Image();
+    img.onload=()=>{
+      mapImage=img;
+      SIZE_W=img.width;
+      SIZE_H=img.height;
+      status.textContent="Bild geladen ("+SIZE_W+"x"+SIZE_H+"px)";
+      reset();
+    };
+    img.src=evt.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+// Bewegungs-Steuerung per Buttons
 const step=10;
 document.querySelector('#move-n').onclick=()=>{y-=step/z;clamp();draw();};
 document.querySelector('#move-s').onclick=()=>{y+=step/z;clamp();draw();};
