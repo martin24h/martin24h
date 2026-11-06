@@ -2,16 +2,36 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Wien-Luftbild-Fernrohr</title>
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-*{box-sizing:border-box}body{margin:0;background:#101923;color:#eef4f8;font:16px system-ui;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+*{box-sizing:border-box}body {
+  margin: 0;
+  background: #101923;
+  color: #eef4f8;
+  font: 16px system-ui;
+
+  display: flex;
+  flex-direction: column;
+
+  height: 100vh;
+  height: 100dvh;
+
+  overflow: hidden;
+}
 header{padding:8px 12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#192635;flex-shrink:0;z-index:1000}
 h1{font-size:1rem;margin:0}
 button{padding:8px 12px;border:0;border-radius:8px;background:#36506a;color:white;font-weight:bold;cursor:pointer;font-size:0.85rem}button:disabled{opacity:.4}#free{background:#23885c}
-.stage{flex-grow:1;position:relative;touch-action:none;background:#000;overflow:hidden}
+.stage {
+  min-height: 0;
+  flex: 1 1 auto;
+  position: relative;
+  touch-action: none;
+  background: #000;
+  overflow: hidden;
+}
 #map{width:100%;height:100%;position:absolute;top:0;left:0}
 
 /* Perfekte runde Fernrohr-Maske via SVG / Clip-Path oder Box-Shadow */
@@ -35,7 +55,20 @@ button{padding:8px 12px;border:0;border-radius:8px;background:#36506a;color:whit
 }
 
 .hud{position:absolute;top:10px;left:10px;background:#07111ddd;padding:8px 12px;border-radius:9px;pointer-events:none;font-size:0.85rem;z-index:1000}
-.controls{background:#192635;padding:8px;display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0;z-index:1000}
+.controls {
+  background: #192635;
+
+  padding: 8px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+
+  flex-shrink: 0;
+  z-index: 1000;
+}
 .control-row{display:flex;gap:5px}
 .pad-btn{width:48px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:#243647}
 </style>
