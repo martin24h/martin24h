@@ -1,31 +1,57 @@
 <!doctype html>
-<html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Stadtplan-Fernrohr</title>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wien-Luftbild-Fernrohr</title>
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 *{box-sizing:border-box}body{margin:0;background:#101923;color:#eef4f8;font:16px system-ui;display:flex;flex-direction:column;height:100vh;overflow:hidden}
-header{padding:8px 12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#192635;flex-shrink:0}
+header{padding:8px 12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#192635;flex-shrink:0;z-index:1000}
 h1{font-size:1rem;margin:0}
 button{padding:8px 12px;border:0;border-radius:8px;background:#36506a;color:white;font-weight:bold;cursor:pointer;font-size:0.85rem}button:disabled{opacity:.4}#free{background:#23885c}
 .stage{flex-grow:1;position:relative;touch-action:none;background:#000;overflow:hidden}
-canvas{width:100%;height:100%;display:block}
-.hud{position:absolute;top:10px;left:10px;background:#07111ddd;padding:8px 12px;border-radius:9px;pointer-events:none;font-size:0.85rem}
-.controls{background:#192635;padding:8px;display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0}
+#map{width:100%;height:100%;position:absolute;top:0;left:0}
+
+/* Perfekte runde Fernrohr-Maske via SVG / Clip-Path oder Box-Shadow */
+.scope-overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 500;
+  /* Erzeugt einen perfekten runden Ausschnitt in der Mitte */
+  background: radial-gradient(circle at center, rgba(0,0,0,0) 32%, rgba(0,0,0,0.98) 32.5%);
+}
+
+.scope-ring {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(65vw, 65vh); height: min(65vw, 65vh);
+  border-radius: 50%; border: 5px solid #ffd700;
+  pointer-events: none; z-index: 600;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+.scope-ring::after {
+  content: '✨'; font-size: 26px; text-shadow: 0 0 6px #fff;
+}
+
+.hud{position:absolute;top:10px;left:10px;background:#07111ddd;padding:8px 12px;border-radius:9px;pointer-events:none;font-size:0.85rem;z-index:1000}
+.controls{background:#192635;padding:8px;display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0;z-index:1000}
 .control-row{display:flex;gap:5px}
 .pad-btn{width:48px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:#243647}
-.action-row{display:flex;gap:6px;align-items:center;margin-top:2px;justify-content:center;width:100%}
-.file-label{background:#36506a;padding:8px 12px;border-radius:8px;font-weight:bold;cursor:pointer;font-size:0.85rem;display:inline-block}
-input[type="file"]{display:none}
 </style>
+</head>
+<body>
+
 <header>
-  <h1>Stadtplan-Fernrohr</h1>
-  <div style="display:flex;gap:6px;align-items:center;">
-    <label class="file-label">📁 Bild wählen<input type="file" id="uploadMap" accept="image/*"></label>
-    <button id="reset">Neu</button>
-  </div>
+  <h1>Wien-Luftbild-Fernrohr</h1>
+  <div><button id="reset">Reset</button></div>
 </header>
+
 <div class="stage" id="stage">
-  <canvas id="c"></canvas>
-  <div class="hud"><div id="status">Lade ein Bild oder nutze Test-Plan.</div><div id="count">Befreit: 0 / 0</div></div>
+  <div id="map"></div>
+  <div class="scope-overlay" id="scopeMask"></div>
+  <div class="scope-ring" id="scopeRing"></div>
+  <div class="hud"><div id="status">Suche eingesperrte Personen in Wien.</div><div id="count">Befreit: 0 / 3</div></div>
 </div>
 
 <div class="controls">
@@ -37,7 +63,7 @@ input[type="file"]{display:none}
   </div>
   <div class="control-row">
     <button class="pad-btn" id="move-w">←</button>
-    <button class="pad-btn" id="free" disabled style="width:96px">Befreien</button>
+    <button class="pad-btn" id="free" disabled style="width:96px">Freilassen</button>
     <button class="pad-btn" id="move-e">→</button>
     <button class="pad-btn" id="plus" style="background:#4a366a">Zoom +</button>
   </div>
@@ -45,181 +71,265 @@ input[type="file"]{display:none}
     <button class="pad-btn" id="move-sw">↙</button>
     <button class="pad-btn" id="move-s">↓</button>
     <button class="pad-btn" id="move-se">↘</button>
-    <span id="zoom" style="display:flex;align-items:center;padding:0 10px;font-weight:bold;font-size:0.9rem;color:#bdcad6;">1×</span>
+    <span id="zoom" style="display:flex;align-items:center;padding:0 10px;font-weight:bold;font-size:0.9rem;color:#bdcad6;">Zoom</span>
   </div>
 </div>
 
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-(()=>{
-// ==========================================
-// 1. HIER KANNST DU DIE KOORDINATEN EINTRAGEN (X und Y)
-// ==========================================
-const customSpots = [
-  { x: 1200, y: 1500 },
-  { x: 3000, y: 3000 },
-  { x: 4500, y: 3500 },
-  { x: 1500, y: 4800 },
-  { x: 5000, y: 5000 }
+// Koordinaten in Wien (Latitude, Longitude)
+let people = [
+  {
+    lat: 48.2082,
+    lng: 16.3738,
+    name: 'Person am Stephansplatz',
+    freed: false,
+    marker: null,
+    imageLayer: null,
+    image: 'bilder/figur5.webp',
+    imageWidth: 10,
+    imageHeight: 10
+  },
+  {
+    lat: 48.2125,
+    lng: 16.3780,
+    name: 'Person am Donaukanal',
+    freed: false,
+    marker: null,
+    imageLayer: null,
+    image: 'bilder/figur5.webp',
+    imageWidth: 10,
+    imageHeight: 10
+  },
+  {
+    lat: 48.2035,
+    lng: 16.3585,
+    name: 'Person im Museumsquartier',
+    freed: false,
+    marker: null,
+    imageLayer: null,
+    image: 'bilder/figur5.webp',
+    imageWidth: 10,
+    imageHeight: 10
+  }
 ];
 
-const c=document.querySelector('#c'),ctx=c.getContext('2d'),stage=document.querySelector('#stage'),status=document.querySelector('#status'),count=document.querySelector('#count'),free=document.querySelector('#free'),zoomText=document.querySelector('#zoom');
-
-let SIZE_W=6000, SIZE_H=6000; // Standardgrösse, passt sich bei Bild-Upload automatisch an
-const SHOW=3.8;
-let w=0,h=0,dpr=1,z=.35,x=3000,y=3000,focus=null;
-let mapImage=null;
-let people=[];
-
-function reset(){
-  people=customSpots.map((p,i)=>({x:p.x,y:p.y,name:'Person '+(i+1),freed:false}));
-  z=.35; x=SIZE_W/2; y=SIZE_H/2;
-  count.textContent='Befreit: 0 / '+people.length;
-  draw();
-}
-
-function resize(){
-  let r=stage.getBoundingClientRect();
-  dpr=Math.min(devicePixelRatio||1,2);
-  w=r.width; h=r.height;
-  c.width=w*dpr; c.height=h*dpr;
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  draw();
-}
-
-function screen(a,b){return [(a-x)*z+w/2,(b-y)*z+h/2]}
-function world(a,b){return [(a-w/2)/z+x,(b-h/2)/z+y]}
-
-function map(){
-  ctx.fillStyle='#000';ctx.fillRect(0,0,w,h); // Alles ausserhalb des Fernrohrs ist schwarz
-  
-  let cx=w/2,cy=h/2,r=Math.min(w,h)*.32;
-  ctx.save();
-  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip(); // Nur im Fernrohr zeichnen
-
-  if(mapImage){
-    // ECHTES BILD ZEICHNEN
-    let p1 = screen(0, 0);
-    let p2 = screen(SIZE_W, SIZE_H);
-    ctx.drawImage(mapImage, p1[0], p1[1], (p2[0]-p1[0]), (p2[1]-p1[1]));
-  } else {
-    // FALLBACK-TEST-KARTENZEICHNUNG (falls kein Bild hochgeladen)
-    ctx.fillStyle='#d8d5c7';ctx.fillRect(0,0,w,h);
-    let a=world(0,0),b=world(w,h),l=Math.max(0,a[0]),t=Math.max(0,a[1]),r_w=Math.min(SIZE_W,b[0]),bt=Math.min(SIZE_H,b[1]);
-    for(let i=0;i<15;i++){
-      let p=screen(i*400, i*350);
-      ctx.fillStyle='#b8cfa8';ctx.fillRect(p[0],p[1],300*z,250*z);
-    }
-  }
-
-  // Personen einzeichnen (wenn stark genug gezoomt)
-  if(z>=SHOW) people.forEach(drawPerson);
-  
-  ctx.restore();
-}
-
-function drawPerson(p){
-  let q=screen(p.x,p.y), r=Math.max(6, 12*z);
-  ctx.save();
-  ctx.translate(...q);
-  
-  // Körper / Gesicht der Person
-  ctx.fillStyle=p.freed?'#268b60':'#e8b54b';
-  ctx.beginPath();ctx.arc(0,-r*0.8,r*0.5,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle=p.freed?'#16734b':'#477ca8';
-  ctx.fillRect(-r*0.4,-r*0.3,r*0.8,r*1.1);
-
-  // GITTER / KÄFIG (wenn nicht freigelassen)
-  if(!p.freed){
-    ctx.strokeStyle='#d03030';
-    ctx.lineWidth=Math.max(2, z*0.8);
-    // Gitterstäbe über die Person legen
-    ctx.strokeRect(-r*1.2,-r*1.6,r*2.4,r*2.8);
-    for(let k=-0.6;k<=0.6;k+=0.6){
-      ctx.beginPath();
-      ctx.moveTo(k*r,-r*1.6);
-      ctx.lineTo(k*r,r*1.2);
-      ctx.stroke();
-    }
-  }
-  ctx.restore();
-}
-
-function scope(){
-  let cx=w/2,cy=h/2,r=Math.min(w,h)*.32;
-  ctx.save();
-  // Äusserer Fernrohr-Ring
-  ctx.strokeStyle='#e0f4ff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
-  // Fadenkreuz in der Mitte
-  ctx.lineWidth=1.5;ctx.strokeStyle='#e0f4ffaa';ctx.beginPath();
-  ctx.moveTo(cx-r*.15,cy);ctx.lineTo(cx+r*.15,cy);
-  ctx.moveTo(cx,cy-r*.15);ctx.lineTo(cx,cy+r*.15);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function update(){
-  focus=null;
-  if(z>=SHOW){
-    let rr=Math.min(w,h)*.32*0.75;
-    for(let p of people){
-      if(p.freed)continue;
-      let q=screen(p.x,p.y);
-      if(Math.hypot(q[0]-w/2,q[1]-h/2)<rr){focus=p;break;}
-    }
-  }
-  free.disabled=!focus;
-  status.textContent=focus?focus.name+' im Fokuskreis!':z<SHOW?'Zoome näher heran, um das Gitter zu sehen.':'Suche Personen im Stadtplan.';
-}
-
-function draw(){if(!w||!h)return;ctx.setTransform(dpr,0,0,dpr,0,0);map();scope();zoomText.textContent=z.toFixed(1)+'×';update();}
-function clamp(){x=Math.max(-w/(2*z),Math.min(SIZE_W+w/(2*z),x));y=Math.max(-h/(2*z),Math.min(SIZE_H+h/(2*z),y));}
-function zoomAt(n){z=Math.max(.12,Math.min(15,n));clamp();draw();}
-
-// Bild-Upload Event
-document.querySelector('#uploadMap').addEventListener('change', (e)=>{
-  let file=e.target.files[0];
-  if(!file)return;
-  let reader=new FileReader();
-  reader.onload=(evt)=>{
-    let img=new Image();
-    img.onload=()=>{
-      mapImage=img;
-      SIZE_W=img.width;
-      SIZE_H=img.height;
-      status.textContent="Bild geladen ("+SIZE_W+"x"+SIZE_H+"px)";
-      reset();
-    };
-    img.src=evt.target.result;
-  };
-  reader.readAsDataURL(file);
+// Karte initialisieren
+const map = L.map('map', {
+  center: [48.2082, 16.3738],
+  zoom: 13,
+  minZoom: 12,
+  maxZoom: 19,
+  zoomControl: false,
+  attributionControl: false
 });
 
-// Bewegungs-Steuerung per Buttons
-const step=10;
-document.querySelector('#move-n').onclick=()=>{y-=step/z;clamp();draw();};
-document.querySelector('#move-s').onclick=()=>{y+=step/z;clamp();draw();};
-document.querySelector('#move-w').onclick=()=>{x-=step/z;clamp();draw();};
-document.querySelector('#move-e').onclick=()=>{x+=step/z;clamp();draw();};
-document.querySelector('#move-nw').onclick=()=>{x-=step/1.4/z;y-=step/1.4/z;clamp();draw();};
-document.querySelector('#move-ne').onclick=()=>{x+=step/1.4/z;y-=step/1.4/z;clamp();draw();};
-document.querySelector('#move-sw').onclick=()=>{x-=step/1.4/z;y+=step/1.4/z;clamp();draw();};
-document.querySelector('#move-se').onclick=()=>{x+=step/1.4/z;y+=step/1.4/z;clamp();draw();};
+// Offizielles basemap.at Orthofoto (Luftbild ohne störende Labels) einbinden[cite: 1]
+/* L.tileLayer('https://maps{s}.wien.gv.at/basemap/bmaporthofoto30cm/normal/google3857/{z}/{y}/{x}.jpeg', {
+  subdomains: ['', '1', '2', '3', '4'],
+  maxZoom: 19,
+  tileSize: 256
+}).addTo(map); */
 
-document.querySelector('#plus').onclick=()=>zoomAt(z*1.35);
-document.querySelector('#minus').onclick=()=>zoomAt(z/1.35);
-document.querySelector('#reset').onclick=reset;
+// basemap.at Orthofoto – neue Service-Adresse
+const orthoLayer = L.tileLayer(
+  'https://mapsneu.wien.gv.at/basemap/bmaporthofoto30cm/normal/google3857/{z}/{y}/{x}.jpeg',
+  {
+    minZoom: 12,
+    maxZoom: 19,
+    tileSize: 256,
+    attribution: '© basemap.at',
+    keepBuffer: 4
+  }
+);
 
-free.onclick=()=>{
-  if(!focus)return;
-  focus.freed=true;
-  let n=people.filter(p=>p.freed).length;
-  count.textContent='Befreit: '+n+' / '+people.length;
-  if(n===people.length)status.textContent='Alle Personen befreit!';
-  draw();
+orthoLayer.addTo(map);
+
+// Fehler beim Laden einzelner Kacheln protokollieren
+orthoLayer.on('tileerror', function(e) {
+  console.error('Kachel konnte nicht geladen werden:', e.coords, e.error);
+});
+
+const status = document.querySelector('#status');
+const count = document.querySelector('#count');
+const freeBtn = document.querySelector('#free');
+let activeFocus = null;
+
+function initPeople() {
+
+  people.forEach(p => {
+
+	 // Gemeinsame geografische Fläche für JPG und Gitter
+	const bounds = createImageBounds(
+	  p.lat,
+	  p.lng,
+	  p.imageWidth || 10,
+	  p.imageHeight || 10
+	);
+
+	const south = bounds[0][0];
+	const west  = bounds[0][1];
+	const north = bounds[1][0];
+	const east  = bounds[1][1];
+
+	const midLat = (south + north) / 2;
+	const midLng = (west + east) / 2;
+
+	// Gitter geografisch aufbauen
+	p.marker = L.layerGroup([
+
+	  // Äußerer Rahmen
+	  L.rectangle(bounds, {
+		color: '#b22222',
+		weight: 2,
+		fillColor: '#c82828',
+		fillOpacity: 0.35,
+		pane: 'markerPane'
+	  }),
+
+	  // Senkrechte Mittellinie
+	  L.polyline([
+		[south, midLng],
+		[north, midLng]
+	  ], {
+		color: '#b22222',
+		weight: 1,
+		pane: 'markerPane'
+	  }),
+
+	  // Waagrechte Mittellinie
+	  L.polyline([
+		[midLat, west],
+		[midLat, east]
+	  ], {
+		color: '#b22222',
+		weight: 1,
+		pane: 'markerPane'
+	  })
+
+	]).addTo(map);
+
+    // JPG dauerhaft als geografische Bildebene hinzufügen
+	if (p.image) {
+	  p.imageLayer = L.imageOverlay(
+		p.image,
+		bounds,
+		{
+		  opacity: 1,
+		  interactive: false,
+		  zIndex: 400
+		}
+	  ).addTo(map);
+	}
+
+  });
+
+  updateGame();
+}
+
+
+function createImageBounds(lat, lng, widthMeters, heightMeters) {
+
+  const metersPerDegreeLat = 111320;
+
+  const halfHeight = (heightMeters / 2) / metersPerDegreeLat;
+
+  const halfWidth = (widthMeters / 2) /
+    (metersPerDegreeLat * Math.cos(lat * Math.PI / 180));
+
+  return [
+    [lat - halfHeight, lng - halfWidth],
+    [lat + halfHeight, lng + halfWidth]
+  ];
+}
+
+function updateGame() {
+  activeFocus = null;
+  let currentZoom = map.getZoom();
+  let centerCoord = map.getCenter();
+  const SHOW_ZOOM = 16; // Ab welchem Zoom das Gitter erscheint
+  
+  people.forEach(p => {
+    if (p.freed) {
+      if (p.marker) map.removeLayer(p.marker);
+      return;
+    }
+
+    if (currentZoom >= SHOW_ZOOM) {
+      if (!map.hasLayer(p.marker)) p.marker.addTo(map);
+      
+      let centerPoint = map.latLngToContainerPoint(centerCoord);
+      let personPoint = map.latLngToContainerPoint([p.lat, p.lng]);
+      let distance = centerPoint.distanceTo(personPoint);
+      
+      // Fernrohr-Radius in Pixeln (entspricht dem CSS min(65vw, 65vh) / 2)
+   /*   let stageRect = document.getElementById('stage').getBoundingClientRect();
+      let scopeRadius = Math.min(stageRect.width, stageRect.height) * 0.325;
+
+      if (distance < scopeRadius) {
+        activeFocus = p;
+      }*/
+	 // Trefferzone rund um den Zauberstern
+	const HIT_TOLERANCE = 12; // Pixel
+
+	if (distance <= HIT_TOLERANCE) {
+	  activeFocus = p;
+	} 
+    } else {
+      if (map.hasLayer(p.marker)) map.removeLayer(p.marker);
+    }
+  });
+
+  freeBtn.disabled = !activeFocus;
+  let freedCount = people.filter(x => x.freed).length;
+  count.textContent = 'Befreit: ' + freedCount + ' / ' + people.length;
+
+  if (freedCount === people.length) {
+    status.textContent = 'Alle Personen in Wien erfolgreich befreit!';
+  } else if (currentZoom < SHOW_ZOOM) {
+    status.textContent = 'Zoome näher heran, um das Gitter zu finden.';
+  } else {
+    status.textContent = activeFocus ? activeFocus.name + ' im Fernrohr – freilassen?' : 'Suche eingesperrte Personen in Wien.';
+  }
+}
+
+map.on('move zoom', updateGame);
+
+// Steuerung per Buttons
+document.querySelector('#move-n').onclick = () => map.panBy([0, -50]);
+document.querySelector('#move-s').onclick = () => map.panBy([0, 50]);
+document.querySelector('#move-w').onclick = () => map.panBy([-50, 0]);
+document.querySelector('#move-e').onclick = () => map.panBy([50, 0]);
+document.querySelector('#move-nw').onclick = () => map.panBy([-35, -35]);
+document.querySelector('#move-ne').onclick = () => map.panBy([35, -35]);
+document.querySelector('#move-sw').onclick = () => map.panBy([-35, 35]);
+document.querySelector('#move-se').onclick = () => map.panBy([35, 35]);
+
+document.querySelector('#plus').onclick = () => map.zoomIn();
+document.querySelector('#minus').onclick = () => map.zoomOut();
+
+document.querySelector('#reset').onclick = () => {
+
+  people.forEach(p => {
+    p.freed = false;
+  });
+
+  map.setView([48.2082, 16.3738], 13);
+
+  updateGame();
 };
 
-window.addEventListener('resize',resize);
-reset();resize();
-})();
+freeBtn.onclick = () => {
+  if (!activeFocus) return;
+  activeFocus.freed = true;
+  updateGame();
+};
+
+initPeople();
+
+setTimeout(() => { map.invalidateSize(); }, 200);
+window.addEventListener('resize', () => { map.invalidateSize(); });
 </script>
+</body>
 </html>
