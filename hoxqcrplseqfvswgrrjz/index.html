@@ -1,369 +1,90 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>8. Dezember</title>
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<style>
-*{box-sizing:border-box}body {
-  margin: 0;
-  background: #101923;
-  color: #eef4f8;
-  font: 16px system-ui;
+    <title>8. Dezember</title>
+  <link rel="stylesheet" href="https://martin24h.github.io/martin24h/akcss/inc.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  display: flex;
-  flex-direction: column;
+  <style>
+  pre.fblack{background:black;color:#FFF;padding:0.5em;}
+  pre.fgray{background:#F4F4F4;color:#000;padding:0.5em;}
+  code{font-weight:bold;font-size:0.9em;color:#333;}
+  table{border-collapse:collapse;}
+  td,th{border:1px solid #AAA;}
+  .fred{color:red;font-weight:bold;}
+  .fblue{color:blue;font-weight:bold;}
+  .forange{color:orange;font-weight:bold;}
 
-  height: 100vh;
-  height: 100dvh;
+#geloest {
+    display: none;
+    width: min(92vw, 600px);
+    box-sizing: border-box;
+    margin: 15px auto;
+    padding: 20px;
+    background: white;
+    color: black;
+    border: 3px solid green;
+    border-radius: 12px;
+    text-align: center;
+    font-family: Arial, sans-serif;
+} 
 
-  overflow: hidden;
-}
-header{padding:8px 12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#192635;flex-shrink:0;z-index:1000}
-h1{font-size:1rem;margin:0}
-button{padding:8px 12px;border:0;border-radius:8px;background:#36506a;color:white;font-weight:bold;cursor:pointer;font-size:0.85rem}button:disabled{opacity:.4}#free{background:#23885c}
-.stage {
-  min-height: 0;
-  flex: 1 1 auto;
-  position: relative;
-  touch-action: none;
-  background: #000;
-  overflow: hidden;
-}
-#map{width:100%;height:100%;position:absolute;top:0;left:0}
+ body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f3f4f6;
+      padding: 15px;
+    }
 
-/* Perfekte runde Fernrohr-Maske via SVG / Clip-Path oder Box-Shadow */
-.scope-overlay {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  pointer-events: none; z-index: 500;
-  /* Erzeugt einen perfekten runden Ausschnitt in der Mitte */
-  background: radial-gradient(circle at center, rgba(0,0,0,0) 32%, rgba(0,0,0,0.98) 32.5%);
-}
+    #puzzle {
+      display: grid;
+      gap: 3px;
+      width: min(92vw, 600px);
+      aspect-ratio: 1 / 1;
+      margin: 20px auto;
+      padding: 3px;
+      background: #333;
+      touch-action: manipulation;
+    }
 
-.scope-ring {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: min(65vw, 65vh); height: min(65vw, 65vh);
-  border-radius: 50%; border: 5px solid #ffd700;
-  pointer-events: none; z-index: 600;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 20px rgba(0,0,0,0.8);
-}
-.scope-ring::after {
-  content: '✨'; font-size: 26px; text-shadow: 0 0 6px #fff;
-}
+    .kachel {
+      border: 2px solid transparent;
+      border-radius: 2px;
+      min-width: 0;
+      min-height: 0;
+      padding: 0;
+      cursor: pointer;
+      background-repeat: no-repeat;
+      touch-action: manipulation;
+    }
 
-.hud{position:absolute;top:10px;left:10px;background:#07111ddd;padding:8px 12px;border-radius:9px;pointer-events:none;font-size:0.85rem;z-index:1000}
-.controls {
-  background: #192635;
+    .kachel.ausgewaehlt {
+      border: 3px solid #ffca28;
+    }
 
-  padding: 8px;
-  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    button {
+      font-size: 16px;
+    }
 
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-
-  flex-shrink: 0;
-  z-index: 1000;
-}
-.control-row{display:flex;gap:5px}
-.pad-btn{width:48px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:#243647}
-</style>
+    #meldung {
+      font-weight: bold;
+    }
+  </style>
 </head>
+
 <body>
-
-<header>
-<!--  <h1>Wien-Luftbild-Fernrohr</h1> -->
-<!--  <div><button id="reset">Reset</button></div> -->
-</header>
-
-<div class="stage" id="stage">
-  <div id="map"></div>
-  <div class="scope-overlay" id="scopeMask"></div>
-  <div class="scope-ring" id="scopeRing"></div>
-  <div class="hud"><div id="status">Befreie alle Tropfnessis und Mäandertaler in Wien.</div><div id="count">Befreit: 0 / 3</div></div>
-</div>
-
-<div class="controls">
-  <div class="control-row">
-    <button class="pad-btn" id="move-nw">↖</button>
-    <button class="pad-btn" id="move-n">↑</button>
-    <button class="pad-btn" id="move-ne">↗</button>
-    <button class="pad-btn" id="minus" style="background:#4a366a">Zoom −</button>
-  </div>
-  <div class="control-row">
-    <button class="pad-btn" id="move-w">←</button>
-    <button class="pad-btn" id="free" disabled style="width:96px">Freilassen</button>
-    <button class="pad-btn" id="move-e">→</button>
-    <button class="pad-btn" id="plus" style="background:#4a366a">Zoom +</button>
-  </div>
-  <div class="control-row">
-    <button class="pad-btn" id="move-sw">↙</button>
-    <button class="pad-btn" id="move-s">↓</button>
-    <button class="pad-btn" id="move-se">↘</button>
-    <span id="zoom" style="display:flex;align-items:center;padding:0 10px;font-weight:bold;font-size:0.9rem;color:#bdcad6;">Zoom</span>
-  </div>
-</div>
-
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-// Koordinaten in Wien (Latitude, Longitude)
-let people = [
-  {
-    lat: 48.2082,
-    lng: 16.3738,
-    name: 'Person am Stephansplatz',
-    freed: false,
-    marker: null,
-    imageLayer: null,
-    image: 'bilder/MT.png',
-    imageWidth: 10,
-    imageHeight: 10
-  },
-  {
-    lat: 48.2125,
-    lng: 16.3780,
-    name: 'Person am Donaukanal',
-    freed: false,
-    marker: null,
-    imageLayer: null,
-    image: 'bilder/TN.png',
-    imageWidth: 10,
-    imageHeight: 10
-  },
-  {
-    lat: 48.2035,
-    lng: 16.3585,
-    name: 'Person im Museumsquartier',
-    freed: false,
-    marker: null,
-    imageLayer: null,
-    image: 'bilder/MT.png',
-    imageWidth: 10,
-    imageHeight: 10
-  }
-];
-
-// Karte initialisieren
-const map = L.map('map', {
-  center: [48.2082, 16.3738],
-  zoom: 13,
-  minZoom: 12,
-  maxZoom: 19,
-  zoomControl: false,
-  attributionControl: false
-});
-
-// Offizielles basemap.at Orthofoto (Luftbild ohne störende Labels) einbinden[cite: 1]
-/* L.tileLayer('https://maps{s}.wien.gv.at/basemap/bmaporthofoto30cm/normal/google3857/{z}/{y}/{x}.jpeg', {
-  subdomains: ['', '1', '2', '3', '4'],
-  maxZoom: 19,
-  tileSize: 256
-}).addTo(map); */
-
-// basemap.at Orthofoto – neue Service-Adresse
-const orthoLayer = L.tileLayer(
-  'https://mapsneu.wien.gv.at/basemap/bmaporthofoto30cm/normal/google3857/{z}/{y}/{x}.jpeg',
-  {
-    minZoom: 12,
-    maxZoom: 19,
-    tileSize: 256,
-    attribution: '© basemap.at',
-    keepBuffer: 4
-  }
-);
-
-orthoLayer.addTo(map);
-
-// Fehler beim Laden einzelner Kacheln protokollieren
-orthoLayer.on('tileerror', function(e) {
-  console.error('Kachel konnte nicht geladen werden:', e.coords, e.error);
-});
-
-const status = document.querySelector('#status');
-const count = document.querySelector('#count');
-const freeBtn = document.querySelector('#free');
-let activeFocus = null;
-
-function initPeople() {
-
-  people.forEach(p => {
-
-	 // Gemeinsame geografische Fläche für JPG und Gitter
-	const bounds = createImageBounds(
-	  p.lat,
-	  p.lng,
-	  p.imageWidth || 10,
-	  p.imageHeight || 10
-	);
-
-	const south = bounds[0][0];
-	const west  = bounds[0][1];
-	const north = bounds[1][0];
-	const east  = bounds[1][1];
-
-	const midLat = (south + north) / 2;
-	const midLng = (west + east) / 2;
-
-	// Gitter geografisch aufbauen
-	p.marker = L.layerGroup([
-
-	  // Äußerer Rahmen
-	  L.rectangle(bounds, {
-		color: '#b22222',
-		weight: 2,
-		fillColor: '#c82828',
-		fillOpacity: 0.35,
-		pane: 'markerPane'
-	  }),
-
-	  // Senkrechte Mittellinie
-	  L.polyline([
-		[south, midLng],
-		[north, midLng]
-	  ], {
-		color: '#b22222',
-		weight: 1,
-		pane: 'markerPane'
-	  }),
-
-	  // Waagrechte Mittellinie
-	  L.polyline([
-		[midLat, west],
-		[midLat, east]
-	  ], {
-		color: '#b22222',
-		weight: 1,
-		pane: 'markerPane'
-	  })
-
-	]).addTo(map);
-
-    // JPG dauerhaft als geografische Bildebene hinzufügen
-	if (p.image) {
-	  p.imageLayer = L.imageOverlay(
-		p.image,
-		bounds,
-		{
-		  opacity: 1,
-		  interactive: false,
-		  zIndex: 400
-		}
-	  ).addTo(map);
-	}
-
-  });
-
-  updateGame();
-}
-
-
-function createImageBounds(lat, lng, widthMeters, heightMeters) {
-
-  const metersPerDegreeLat = 111320;
-
-  const halfHeight = (heightMeters / 2) / metersPerDegreeLat;
-
-  const halfWidth = (widthMeters / 2) /
-    (metersPerDegreeLat * Math.cos(lat * Math.PI / 180));
-
-  return [
-    [lat - halfHeight, lng - halfWidth],
-    [lat + halfHeight, lng + halfWidth]
-  ];
-}
-
-function updateGame() {
-  activeFocus = null;
-  let currentZoom = map.getZoom();
-  let centerCoord = map.getCenter();
-  const SHOW_ZOOM = 16; // Ab welchem Zoom das Gitter erscheint
-  
-  people.forEach(p => {
-    if (p.freed) {
-      if (p.marker) map.removeLayer(p.marker);
-      return;
-    }
-
-    if (currentZoom >= SHOW_ZOOM) {
-      if (!map.hasLayer(p.marker)) p.marker.addTo(map);
-      
-      let centerPoint = map.latLngToContainerPoint(centerCoord);
-      let personPoint = map.latLngToContainerPoint([p.lat, p.lng]);
-      let distance = centerPoint.distanceTo(personPoint);
-      
-      // Fernrohr-Radius in Pixeln (entspricht dem CSS min(65vw, 65vh) / 2)
-   /*   let stageRect = document.getElementById('stage').getBoundingClientRect();
-      let scopeRadius = Math.min(stageRect.width, stageRect.height) * 0.325;
-
-      if (distance < scopeRadius) {
-        activeFocus = p;
-      }*/
-	 // Trefferzone rund um den Zauberstern
-	const HIT_TOLERANCE = 12; // Pixel
-
-	if (distance <= HIT_TOLERANCE) {
-	  activeFocus = p;
-	} 
-    } else {
-      if (map.hasLayer(p.marker)) map.removeLayer(p.marker);
-    }
-  });
-
-  freeBtn.disabled = !activeFocus;
-  let freedCount = people.filter(x => x.freed).length;
-  count.textContent = 'Befreit: ' + freedCount + ' / ' + people.length;
-
-  if (freedCount === people.length) {
-    status.textContent = 'Alle Personen in Wien erfolgreich befreit!';
-  } else if (currentZoom < SHOW_ZOOM) {
-    status.textContent = 'Befreie alle Tropfnessis und Mäandertaler in Wien.';
-  } else {
-    status.textContent = activeFocus ? activeFocus.name + ' im Fernrohr – freilassen?' : 'Befreie alle Tropfnessis und Mäandertaler in Wien.';
-  }
-}
-
-map.on('move zoom', updateGame);
-
-// Steuerung per Buttons
-document.querySelector('#move-n').onclick = () => map.panBy([0, -50]);
-document.querySelector('#move-s').onclick = () => map.panBy([0, 50]);
-document.querySelector('#move-w').onclick = () => map.panBy([-50, 0]);
-document.querySelector('#move-e').onclick = () => map.panBy([50, 0]);
-document.querySelector('#move-nw').onclick = () => map.panBy([-35, -35]);
-document.querySelector('#move-ne').onclick = () => map.panBy([35, -35]);
-document.querySelector('#move-sw').onclick = () => map.panBy([-35, 35]);
-document.querySelector('#move-se').onclick = () => map.panBy([35, 35]);
-
-document.querySelector('#plus').onclick = () => map.zoomIn();
-document.querySelector('#minus').onclick = () => map.zoomOut();
-
-/* document.querySelector('#reset').onclick = () => {
-
-  people.forEach(p => {
-    p.freed = false;
-  });
-
-  map.setView([48.2082, 16.3738], 13);
-
-  updateGame();
-};
-*/
-
-freeBtn.onclick = () => {
-  if (!activeFocus) return;
-  activeFocus.freed = true;
-  updateGame();
-};
-
-initPeople();
-
-setTimeout(() => { map.invalidateSize(); }, 200);
-window.addEventListener('resize', () => { map.invalidateSize(); });
-</script>
+	<p>
+  Achter Dezember ... der Lift kommt endlich oben, "Aussichtsplattform" blinkt über der Tür, welche sich langsam öffnet. Hm, Du siehst nur einen dunklen Raum vor Dir mit einem 
+  schwach leuchtenden Pfeil, der Dir den Weg zu weisen scheint. Vorsichtig folgst Du dem Pfeil in der Hoffnung, ins Freie und auf die Aussichtsplattform zu kommen.<p>
+  Plötzlich hörst Du hinter Dir ein krachendes Geräusch und eine Tür fällt ins Schloss. Verdammt, das sieht nach einer Falle aus. Verzweifelt versuchst Du die Tür zu öffnen, 
+  aber da rührt sich nichts. Neben der Tür siehst Du ein Tastenfeld - hm, ob Du da einen Code eingeben musst? Aber woher bekommst Du den? Langsam gewöhnen sich Deine Augen 
+  ans Dunkel und Du siehst in der Mitte des Raums eine Art Fernrohr stehen. Darunter eine Tafel: "Magisches Fernrohr zur Befreiung der in Wien gefangenen Tropfnessis und
+  Mäandertaler." Hm, ob das Deine nächste Aufgabe ist? Und wo könnten die Tropfnessis und Mäandertaler gefangen sein, so dass Du sie finden kannst? Wahrscheinlich nur an Orten, 
+  die Eva und Martin gemeinsam in Wien besucht haben vermutest Du.<p>
+  Bist Du bereit, es auf einen Versuch ankommen zu lassen und durch das magische Fernrohr zu blicken?<p>
+  <a href='freegame.html'>JA - ICH BIN BEREIT</a>
+  </p>
 </body>
 </html>
