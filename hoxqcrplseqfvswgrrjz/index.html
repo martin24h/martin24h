@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Wien-Luftbild-Fernrohr</title>
+<title>8. Dezember</title>
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
@@ -76,15 +76,15 @@ button{padding:8px 12px;border:0;border-radius:8px;background:#36506a;color:whit
 <body>
 
 <header>
-  <h1>Wien-Luftbild-Fernrohr</h1>
-  <div><button id="reset">Reset</button></div>
+<!--  <h1>Wien-Luftbild-Fernrohr</h1> -->
+<!--  <div><button id="reset">Reset</button></div> -->
 </header>
 
 <div class="stage" id="stage">
   <div id="map"></div>
   <div class="scope-overlay" id="scopeMask"></div>
   <div class="scope-ring" id="scopeRing"></div>
-  <div class="hud"><div id="status">Suche eingesperrte Personen in Wien.</div><div id="count">Befreit: 0 / 3</div></div>
+  <div class="hud"><div id="status">Befreie alle Tropfnessis und Mäandertaler in Wien.</div><div id="count">Befreit: 0 / 3</div></div>
 </div>
 
 <div class="controls">
@@ -321,9 +321,9 @@ function updateGame() {
   if (freedCount === people.length) {
     status.textContent = 'Alle Personen in Wien erfolgreich befreit!';
   } else if (currentZoom < SHOW_ZOOM) {
-    status.textContent = 'Zoome näher heran, um das Gitter zu finden.';
+    status.textContent = 'Befreie alle Tropfnessis und Mäandertaler in Wien.';
   } else {
-    status.textContent = activeFocus ? activeFocus.name + ' im Fernrohr – freilassen?' : 'Suche eingesperrte Personen in Wien.';
+    status.textContent = activeFocus ? activeFocus.name + ' im Fernrohr – freilassen?' : 'Befreie alle Tropfnessis und Mäandertaler in Wien.';
   }
 }
 
@@ -342,7 +342,7 @@ document.querySelector('#move-se').onclick = () => map.panBy([35, 35]);
 document.querySelector('#plus').onclick = () => map.zoomIn();
 document.querySelector('#minus').onclick = () => map.zoomOut();
 
-document.querySelector('#reset').onclick = () => {
+/* document.querySelector('#reset').onclick = () => {
 
   people.forEach(p => {
     p.freed = false;
@@ -352,6 +352,7 @@ document.querySelector('#reset').onclick = () => {
 
   updateGame();
 };
+*/
 
 freeBtn.onclick = () => {
   if (!activeFocus) return;
