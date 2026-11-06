@@ -244,7 +244,7 @@ let people = [
 const map = L.map('map', {
   center: [48.2082, 16.3738],
   zoom: 13,
-  minZoom: 12,
+  minZoom: 1,
   maxZoom: 19,
   zoomControl: false,
   attributionControl: false
@@ -261,7 +261,7 @@ const map = L.map('map', {
 const orthoLayer = L.tileLayer(
   'https://mapsneu.wien.gv.at/basemap/bmaporthofoto30cm/normal/google3857/{z}/{y}/{x}.jpeg',
   {
-    minZoom: 12,
+    minZoom: 1,
     maxZoom: 19,
     tileSize: 256,
     attribution: '© basemap.at',
