@@ -71,6 +71,84 @@ button{padding:8px 12px;border:0;border-radius:8px;background:#36506a;color:whit
 }
 .control-row{display:flex;gap:5px}
 .pad-btn{width:48px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:#243647}
+
+/* Erfolgsmeldung über dem Fernrohr */
+.success-message {
+  position: absolute;
+  inset: 0;
+
+  display: none;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 900;
+  pointer-events: none;
+
+  padding: 20px;
+}
+
+.success-message.show {
+  display: flex;
+}
+
+.success-content {
+  max-width: 500px;
+  width: 100%;
+
+  text-align: center;
+
+  background: rgba(10, 20, 35, 0.92);
+  border: 3px solid #ffd700;
+  border-radius: 24px;
+
+  padding: 25px 20px;
+
+  box-shadow:
+    0 0 30px rgba(255, 215, 0, 0.5),
+    0 0 80px rgba(0, 0, 0, 0.8);
+
+  animation: successPop 0.7s ease-out;
+}
+
+.success-stars {
+  font-size: clamp(24px, 6vw, 40px);
+  margin: 10px 0;
+}
+
+.success-title {
+  font-size: clamp(32px, 9vw, 60px);
+  font-weight: 900;
+  color: #ffd700;
+
+  text-shadow:
+    0 0 10px #ff9900,
+    0 0 25px #ffd700;
+
+  margin: 10px 0;
+}
+
+.success-text {
+  font-size: clamp(17px, 4.5vw, 25px);
+  line-height: 1.4;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+@keyframes successPop {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+
+  70% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
 </style>
 </head>
 <body>
@@ -84,6 +162,20 @@ button{padding:8px 12px;border:0;border-radius:8px;background:#36506a;color:whit
   <div id="map"></div>
   <div class="scope-overlay" id="scopeMask"></div>
   <div class="scope-ring" id="scopeRing"></div>
+  <div id="successMessage" class="success-message">
+	  <div class="success-content">
+		<div class="success-stars">✨ ⭐ ✨</div>
+		<div class="success-title">BRAVO!</div>
+		<div class="success-text">
+		  Du hast erfolgreich alle in Wien gefangenen
+		  Tropfnessis und Mäandertaler befreit!<p>
+		  Das Fernrohr fängt zu rotieren an und Laserstrahlen
+		  projizieren <strong>B-4</strong> auf das Tastenfeld.<p>
+		  Magisch öffnet sich die Tür. 
+		</div>
+		<div class="success-stars">🎉 🪄 🎉</div>
+	  </div>
+</div>
   <div class="hud"><div id="status">Befreie alle Tropfnessis und Mäandertaler in Wien.</div><div id="count">Befreit: 0 / 3</div></div>
 </div>
 
@@ -134,7 +226,7 @@ let people = [
     image: 'bilder/TN.png',
     imageWidth: 10,
     imageHeight: 10
-  },
+  } /*,
   {
     lat: 48.2035,
     lng: 16.3585,
@@ -145,7 +237,7 @@ let people = [
     image: 'bilder/MT.png',
     imageWidth: 10,
     imageHeight: 10
-  }
+  }*/
 ];
 
 // Karte initialisieren
@@ -187,6 +279,7 @@ orthoLayer.on('tileerror', function(e) {
 const status = document.querySelector('#status');
 const count = document.querySelector('#count');
 const freeBtn = document.querySelector('#free');
+const successMessage = document.querySelector('#successMessage');
 let activeFocus = null;
 
 function initPeople() {
@@ -318,13 +411,28 @@ function updateGame() {
   let freedCount = people.filter(x => x.freed).length;
   count.textContent = 'Befreit: ' + freedCount + ' / ' + people.length;
 
-  if (freedCount === people.length) {
-    status.textContent = 'Alle Personen in Wien erfolgreich befreit!';
+  /*if (freedCount === people.length) {
+    status.textContent = 'BRAVO - Du hast erfolgreich alle in Wien gefangenen Tropfnessis und Mäandertaler befreit!';
   } else if (currentZoom < SHOW_ZOOM) {
     status.textContent = 'Befreie alle Tropfnessis und Mäandertaler in Wien.';
   } else {
     status.textContent = activeFocus ? activeFocus.name + ' im Fernrohr – freilassen?' : 'Befreie alle Tropfnessis und Mäandertaler in Wien.';
-  }
+  } */
+  
+  if (freedCount === people.length) {
+	  status.textContent = '';
+	  successMessage.classList.add('show');
+	  freeBtn.disabled = true;
+} else {
+	  successMessage.classList.remove('show');
+	  if (currentZoom < SHOW_ZOOM) {
+		status.textContent = 'Befreie alle Tropfnessis und Mäandertaler in Wien.';
+	  } else {
+		status.textContent = activeFocus
+		  ? activeFocus.name + ' im Fernrohr – freilassen?'
+		  : 'Befreie alle Tropfnessis und Mäandertaler in Wien.';
+	 }
+	}
 }
 
 map.on('move zoom', updateGame);
