@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Die Flucht aus dem Treibsand</title>
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 18px;
+  background: #173b50;
+  color: #fff5df;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+.game {
+  width: min(950px, 100%);
+  margin: auto;
+}
+
+h1 { margin: 8px 0; }
+p { margin: 8px 0 15px; }
+
+canvas {
+  display: block;
+  width: 100%;
+  border: 5px solid #80532f;
+  border-radius: 10px;
+  background: #e8c895;
+  touch-action: none;
+}
+
+.stats {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+  font-weight: bold;
+}
+
+.controls {
+  max-width: 700px;
+  margin: 14px auto;
+}
+
+input[type=range] {
+  width: 100%;
+  accent-color: #f2b84b;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 22px;
+  margin: 5px;
+  background: #e8aa42;
+  color: #38230d;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover { background: #ffca68; }
+
+#message {
+  min-height: 28px;
+  margin: 12px;
+  color: #ffdc8c;
+  font-weight: bold;
+}
+
+.small {
+  font-size: 13px;
+  opacity: .8;
+}
+</style>
+</head>
+
+<body>
+<div class="game">
+  <h1>🏖️ Die Flucht aus dem Treibsand</h1>
+  <p>
+    Durchbrich die Sandmauer und triff den beweglichen Rettungsturm,
+    bevor das Meer dich verschluckt!
+  </p>
+
+  <div class="stats">
+    <span id="lives">Bälle: 10</span>
+    <span id="water">Wasser: 0 %</span>
+    <span id="time">Zeit: 0 s</span>
+  </div>
+
+  <canvas id="canvas" width="900" height="650"></canvas>
+
+  <div class="controls">
+    <input id="slider" type="range" min="0" max="1000" value="500">
+    <div class="small">
+      Bewege den Schläger mit dem Regler oder mit der Maus über das Spielfeld.
+    </div>
+  </div>
+
+  <button id="start">Spiel starten</button>
+  <button id="restart">Neues Spiel</button>
+
+  <div id="message">
+    Zerstöre die Sandmauer und erreiche den Rettungsturm!
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const W = canvas.width;
+const H = canvas.height;
+
+const slider = document.getElementById("slider");
+const message = document.getElementById("message");
+
+const BASE_PADDLE_MIN_X = 95;
+const BASE_PADDLE_MAX_X = W - 95;
+
+// Dynamische Grenzen, damit sich das W mit den Wellen staucht
+function getMinX() {
+  return BASE_PADDLE_MIN_X + Math.min(240, paddleShift * 1.15);
+}
+
+function getMaxX() {
+  return BASE_PADDLE_MAX_X - Math.min(240, paddleShift * 1.15);
+}
+
+const COLS = 16;
+const ROWS = 4;
+const CELL_W = 43;
+const CELL_H = 26;
+const GAP = 5;
+
+const GRID_X = (W - COLS * (CELL_W + GAP) + GAP) / 2;
+const GRID_Y = 115;
+
+const W_CURVE = {
+  centerY: 0.88,
+  amplitude: 0.055,
+  waves: 2
+};
+
+const paddle = {
+  x: W / 2,
+  y: 0,
+  width: 112,
+  height: 15,
+  slope: 0,
+  nx: 0,
+  ny: -1
+};
+
+const ball = {
+  x: W / 2,
+  y: H - 100,
+  vx: 0,
+  vy: 0,
+  radius: 6,
+  speed: 5.2
+};
+
+const tower = {
+  x: W / 2,
+  y: 25,
+  width: 112,
+  height: 58,
+  speed: 2.1,
+  direction: 1
+};
+
+const BRICK_DISTRIBUTION = {
+  1: 80,  // 70 % einfache Steine
+  2: 20,  // 20 % mittlere Steine
+  3: 0   // 10 % starke Steine
+};
+
+// Wellen-Einstellungen
+const WAVE_INTERVAL = 6.5;
+const WAVE_WARNING = 1.4;
+const WATER_SPEED = 0.055;
+
+let bricks = [];
+
+let lives = 10;
+let waterProgress = 0;
+let elapsed = 0;
+
+let waveTimer = 0;
+let waveWarning = false;
+let waveFlash = 0;
+
+let running = false;
+let gameOver = false;
+let won = false;
+
+let lastFrame = 0;
+
+let paddleShift = 0;
+const PADDLE_WAVE_SHIFT = 9;
+
+// --------------------------------------------------
+// W-FÖRMIGE STRANDLINIE MIT EINGETAUCHTEN WINKELN
+// --------------------------------------------------
+
+function curveY(x) {
+  const minX = getMinX();
+  const maxX = getMaxX();
+  const span = Math.max(50, maxX - minX);
+  const rawT = Math.max(0, Math.min(1, (x - minX) / span));
+  // Mapping sorgt für Einstiegs-Winkel an den Außenrändern statt flacher Spitzen
+  const t = 0.08 + 0.84 * rawT;
+
+  return H * (
+    W_CURVE.centerY -
+    W_CURVE.amplitude *
+    Math.cos(2 * Math.PI * W_CURVE.waves * t)
+  ) - paddleShift;
+}
+
+function curveSlope(x) {
+  const minX = getMinX();
+  const maxX = getMaxX();
+  const span = Math.max(50, maxX - minX);
+  const rawT = Math.max(0, Math.min(1, (x - minX) / span));
+  const t = 0.08 + 0.84 * rawT;
+
+  const dYdt = H * W_CURVE.amplitude *
+    2 * Math.PI * W_CURVE.waves * 0.84 / span *
+    Math.sin(2 * Math.PI * W_CURVE.waves * t);
+
+  return dYdt;
+}
+
+function shorelineY(x) {
+  const minX = getMinX();
+  const maxX = getMaxX();
+  const safeX = Math.max(
+    minX,
+    Math.min(maxX, x)
+  );
+
+  return curveY(safeX);
+}
+
+function updatePaddle() {
+  const value = Number(slider.value) / 1000;
+  const minX = getMinX();
+  const maxX = getMaxX();
+
+  paddle.x = minX + value * (maxX - minX);
+
+  paddle.y = curveY(paddle.x);
+  paddle.slope = curveSlope(paddle.x);
+
+  const length = Math.sqrt(1 + paddle.slope ** 2);
+
+  paddle.nx = paddle.slope / length;
+  paddle.ny = -1 / length;
+}
+
+function placeBall() {
+  updatePaddle();
+
+  const distance = paddle.height / 2 + ball.radius + 3;
+
+  ball.x = paddle.x + paddle.nx * distance;
+  ball.y = paddle.y + paddle.ny * distance;
+
+  ball.vx = 0;
+  ball.vy = 0;
+}
+
+function launchBall() {
+  placeBall();
+
+  ball.vx = paddle.nx * ball.speed;
+  ball.vy = paddle.ny * ball.speed;
+}
+
+// --------------------------------------------------
+// VOLLSTÄNDIGE SANDMAUER
+// --------------------------------------------------
+
+function position(r, c) {
+  return {
+    x: GRID_X + c * (CELL_W + GAP),
+    y: GRID_Y + r * (CELL_H + GAP)
+  };
+}
+
+function randomBrickStrength() {
+  const roll = Math.random() * 100;
+
+  if (roll < BRICK_DISTRIBUTION[1]) return 1;
+
+  if (roll <
+      BRICK_DISTRIBUTION[1] +
+      BRICK_DISTRIBUTION[2]) return 2;
+
+  return 3;
+}
+
+function generateWall() {
+  bricks = [];
+
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const p = position(row, col);
+
+      const hp = randomBrickStrength();
+	  
+      bricks.push({
+        row,
+        col,
+        x: p.x,
+        y: p.y,
+        w: CELL_W,
+        h: CELL_H,
+        hp,
+        maxHp: hp
+      });
+    }
+  }
+}
+
+// --------------------------------------------------
+// WELLEN UND STEINBEWEGUNG
+// --------------------------------------------------
+
+function waterLeft() {
+  return 15 + waterProgress;
+}
+
+function waterRight() {
+  return W - 15 - waterProgress;
+}
+
+function waterPercentage() {
+  return Math.min(
+    100,
+    Math.round(waterProgress / ((W - 30) / 2) * 100)
+  );
+}
+
+function triggerWave() {
+  paddleShift = Math.min(
+    paddleShift + PADDLE_WAVE_SHIFT,
+    75
+  );
+  waveFlash = 1.2;
+  waveWarning = false;
+
+  for (let row = 0; row < ROWS; row++) {
+    const rowBricks = bricks.filter(b => b.row === row);
+
+    const occupied = new Set(
+      rowBricks.map(b => b.col)
+    );
+
+    for (let col = 5; col >= 0; col--) {
+      const brick = rowBricks.find(b => b.col === col);
+
+      if (brick && !occupied.has(col + 1)) {
+        occupied.delete(col);
+        occupied.add(col + 1);
+
+        brick.col++;
+        brick.x += CELL_W + GAP;
+      }
+    }
+
+    for (let col = 8; col < COLS; col++) {
+      const brick = rowBricks.find(b => b.col === col);
+
+      if (brick && !occupied.has(col - 1)) {
+        occupied.delete(col);
+        occupied.add(col - 1);
+
+        brick.col--;
+        brick.x -= CELL_W + GAP;
+      }
+    }
+  }
+
+  message.textContent =
+    "🌊 Eine große Welle schiebt die Sandsteine zur Mitte!";
+
+  updateStats();
+}
+
+function updateWaves(dt) {
+  const speed = WATER_SPEED + elapsed * 0.0009;
+  waterProgress += speed * dt;
+
+  waveTimer += dt / 60;
+
+  const timeUntilWave = WAVE_INTERVAL - waveTimer;
+  waveWarning = timeUntilWave <= WAVE_WARNING;
+
+  if (waveTimer >= WAVE_INTERVAL) {
+    waveTimer = 0;
+    triggerWave();
+  }
+
+  if (waveFlash > 0) {
+    waveFlash -= dt / 60;
+  }
+
+  if (waterLeft() >= waterRight() - 30) {
+    loseBall("Das Meer hat den Strand überflutet!");
+  }
+}
+
+function drawWater() {
+  const minX = getMinX();
+  const maxX = getMaxX();
+
+  ctx.beginPath();
+  ctx.moveTo(0, shorelineY(minX));
+
+  for (let x = minX; x <= maxX; x += 3) {
+    ctx.lineTo(x, curveY(x));
+  }
+
+  ctx.lineTo(W, shorelineY(maxX));
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+
+  const seaGradient = ctx.createLinearGradient(0, H * 0.65, 0, H);
+  seaGradient.addColorStop(0, "#4ba6bd");
+  seaGradient.addColorStop(1, "#176b91");
+
+  ctx.fillStyle = seaGradient;
+  ctx.fill();
+
+  const left = waterLeft();
+  const right = waterRight();
+
+  ctx.fillStyle = "#398fa8";
+  ctx.fillRect(0, 0, left, H);
+  ctx.fillRect(right, 0, W - right, H);
+
+  ctx.strokeStyle = "rgba(225,250,250,0.75)";
+  ctx.lineWidth = 3;
+
+  for (let y = 0; y < H; y += 32) {
+    ctx.beginPath();
+    ctx.moveTo(left - 8, y);
+    ctx.quadraticCurveTo(left + 8, y + 12, left - 8, y + 24);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(right + 8, y);
+    ctx.quadraticCurveTo(right - 8, y + 12, right + 8, y + 24);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "rgba(220,250,255,0.25)";
+  ctx.lineWidth = 2;
+
+  for (let y = 490; y < H; y += 38) {
+    ctx.beginPath();
+    ctx.moveTo(25, y);
+    ctx.quadraticCurveTo(W / 2, y - 12, W - 25, y);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 12px Arial";
+  ctx.textAlign = "left";
+  ctx.fillText("MEER", 12, 18);
+
+  ctx.textAlign = "right";
+  ctx.fillText("MEER", W - 12, 18);
+}
+
+function drawWaveWarning() {
+  if (!waveWarning && waveFlash <= 0) return;
+
+  const alpha = waveFlash > 0
+    ? Math.min(0.35, waveFlash * 0.3)
+    : 0.16;
+
+  ctx.fillStyle = `rgba(40,130,170,${alpha})`;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = "#155d7a";
+  ctx.font = "bold 22px Arial";
+  ctx.textAlign = "center";
+
+  if (waveWarning) {
+    ctx.fillText("🌊 ACHTUNG – EINE WELLE KOMMT!", W / 2, 105);
+  } else {
+    ctx.fillText("🌊 DIE WELLE SCHIEBT DIE STEINE!", W / 2, 105);
+  }
+}
+
+// --------------------------------------------------
+// RETTUNGSTURM
+// --------------------------------------------------
+
+function updateTower(dt) {
+  tower.x += tower.speed * tower.direction * dt;
+
+  if (tower.x - tower.width / 2 < 90) {
+    tower.direction = 1;
+  }
+
+  if (tower.x + tower.width / 2 > W - 90) {
+    tower.direction = -1;
+  }
+}
+
+function drawTower() {
+  const x = tower.x;
+  const y = tower.y;
+
+  ctx.fillStyle = "#80502f";
+  ctx.fillRect(
+    x - tower.width / 2,
+    y,
+    tower.width,
+    tower.height
+  );
+
+  ctx.fillStyle = "#b65a38";
+  ctx.beginPath();
+  ctx.moveTo(x - 65, y);
+  ctx.lineTo(x, y - 24);
+  ctx.lineTo(x + 65, y);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#ffe3a0";
+  ctx.fillRect(x - 30, y + 15, 16, 20);
+  ctx.fillRect(x + 14, y + 15, 16, 20);
+
+  ctx.fillStyle = "#fff4c7";
+  ctx.beginPath();
+  ctx.arc(x, y + 7, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#65442c";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(x - 8, y + tower.height);
+  ctx.lineTo(x - 8, y + tower.height + 18);
+  ctx.lineTo(x + 8, y + tower.height + 18);
+  ctx.lineTo(x + 8, y + tower.height);
+  ctx.stroke();
+
+  ctx.fillStyle = "#68482d";
+  ctx.font = "bold 12px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("RETTUNGSTURM", x, y - 30);
+}
+
+// --------------------------------------------------
+// SPIELFELD ZEICHNEN
+// --------------------------------------------------
+
+function drawBackground() {
+  ctx.fillStyle = "#e8c895";
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = "rgba(140,95,45,0.13)";
+  ctx.lineWidth = 2;
+
+  for (let y = 100; y < H; y += 45) {
+    ctx.beginPath();
+    ctx.moveTo(40, y);
+    ctx.quadraticCurveTo(W / 2, y + 12, W - 40, y);
+    ctx.stroke();
+  }
+
+  drawWater();
+  drawTower();
+}
+
+function drawBricks() {
+  for (const b of bricks) {
+    if (b.hp === 3) {
+      ctx.fillStyle = "#996039";
+    } else if (b.hp === 2) {
+      ctx.fillStyle = "#b87943";
+    } else {
+      ctx.fillStyle = "#d49a59";
+    }
+
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+
+    ctx.strokeStyle = "#80502f";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2);
+
+    ctx.strokeStyle = "rgba(80,45,20,.25)";
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+    ctx.moveTo(b.x + 7, b.y + 8);
+    ctx.lineTo(b.x + b.w - 7, b.y + 8);
+    ctx.stroke();
+
+    ctx.fillStyle = "#fff2d6";
+    ctx.font = "bold 13px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+      b.hp,
+      b.x + b.w / 2,
+      b.y + b.h / 2 + 2
+    );
+  }
+}
+
+function drawCurve() {
+  const minX = getMinX();
+  const maxX = getMaxX();
+
+  ctx.beginPath();
+
+  for (let x = minX; x <= maxX; x += 3) {
+    const y = curveY(x);
+
+    if (x === minX) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+
+  ctx.strokeStyle = "rgba(110,65,30,.35)";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+}
+
+function drawPaddle() {
+  ctx.save();
+  ctx.translate(paddle.x, paddle.y);
+  ctx.rotate(Math.atan2(paddle.slope, 1));
+
+  ctx.fillStyle = "#74472b";
+  ctx.fillRect(
+    -paddle.width / 2,
+    -paddle.height / 2,
+    paddle.width,
+    paddle.height
+  );
+
+  ctx.fillStyle = "#e3b26c";
+  ctx.fillRect(
+    -paddle.width / 2,
+    -paddle.height / 2,
+    paddle.width,
+    4
+  );
+
+  ctx.restore();
+}
+
+function drawBall() {
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+  ctx.fillStyle = "#fff9e8";
+  ctx.fill();
+  ctx.strokeStyle = "#79502e";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function draw() {
+  drawBackground();
+  drawBricks();
+  drawCurve();
+  drawPaddle();
+  drawBall();
+  drawWaveWarning();
+}
+
+// --------------------------------------------------
+// KOLLISIONEN
+// --------------------------------------------------
+
+function circleRectCollision(circle, rect) {
+  const x = Math.max(rect.x, Math.min(circle.x, rect.x + rect.w));
+  const y = Math.max(rect.y, Math.min(circle.y, rect.y + rect.h));
+
+  const dx = circle.x - x;
+  const dy = circle.y - y;
+
+  return dx * dx + dy * dy < circle.radius ** 2;
+}
+
+function hitBrick(b) {
+  b.hp--;
+
+  if (b.hp <= 0) {
+    bricks = bricks.filter(item => item !== b);
+  }
+}
+
+function collideWithPaddle() {
+  const angle = Math.atan2(paddle.slope, 1);
+  const cos = Math.cos(-angle);
+  const sin = Math.sin(-angle);
+
+  const dx = ball.x - paddle.x;
+  const dy = ball.y - paddle.y;
+
+  const localX = dx * cos - dy * sin;
+  const localY = dx * sin + dy * cos;
+
+  const halfW = paddle.width / 2;
+  const halfH = paddle.height / 2;
+
+  const cx = Math.max(-halfW, Math.min(localX, halfW));
+  const cy = Math.max(-halfH, Math.min(localY, halfH));
+
+  const diffX = localX - cx;
+  const diffY = localY - cy;
+
+  const collision =
+    diffX * diffX + diffY * diffY < ball.radius ** 2;
+
+  const movingTowardPaddle =
+    ball.vx * paddle.nx + ball.vy * paddle.ny < 0;
+
+  if (collision && movingTowardPaddle) {
+    const hit = Math.max(-1, Math.min(1, localX / halfW));
+
+    const tx = 1 / Math.sqrt(1 + paddle.slope ** 2);
+    const ty = paddle.slope / Math.sqrt(1 + paddle.slope ** 2);
+
+    let vx = paddle.nx + tx * hit * 0.75;
+    let vy = paddle.ny + ty * hit * 0.75;
+
+    if (vy > -0.3) vy = -0.3;
+
+    const length = Math.hypot(vx, vy);
+
+    ball.vx = vx / length * ball.speed;
+    ball.vy = vy / length * ball.speed;
+
+    ball.x += paddle.nx * 4;
+    ball.y += paddle.ny * 4;
+  }
+}
+
+// --------------------------------------------------
+// SPIELABLAUF
+// --------------------------------------------------
+
+function updateBall() {
+  ball.x += ball.vx;
+  ball.y += ball.vy;
+
+  if (
+    ball.x - ball.radius <= waterLeft() ||
+    ball.x + ball.radius >= waterRight()
+  ) {
+    loseBall("Eine Welle hat den Ball verschluckt!");
+    return;
+  }
+
+  const towerRect = {
+    x: tower.x - tower.width / 2,
+    y: tower.y - 24,
+    w: tower.width,
+    h: tower.height + 24
+  };
+
+  if (circleRectCollision(ball, towerRect)) {
+    winGame();
+    return;
+  }
+
+  if (ball.y - ball.radius < 0) {
+    ball.y = ball.radius;
+    ball.vy = Math.abs(ball.vy);
+  }
+
+  for (const b of [...bricks]) {
+    if (circleRectCollision(ball, b)) {
+      const oldY = ball.y - ball.vy;
+
+      if (
+        oldY + ball.radius <= b.y ||
+        oldY - ball.radius >= b.y + b.h
+      ) {
+        ball.vy *= -1;
+      } else {
+        ball.vx *= -1;
+      }
+
+      hitBrick(b);
+      break;
+    }
+  }
+
+  collideWithPaddle();
+
+  if (ball.y > shorelineY(ball.x) + 8) {
+    loseBall("Der Ball ist ins Meer gefallen!");
+    return;
+  }
+
+  if (bricks.length === 0) {
+    message.textContent =
+      "Die Sandmauer ist durchbrochen! Triff jetzt den Rettungsturm!";
+  }
+}
+
+function loseBall(reason) {
+  if (!running || gameOver) return;
+
+  lives--;
+  running = false;
+
+  if (lives <= 0) {
+    gameOver = true;
+    message.textContent = reason + " Keine Bälle mehr!";
+    document.getElementById("start").textContent = "Neu versuchen";
+    updateStats();
+    return;
+  }
+
+  placeBall();
+
+  message.textContent =
+    reason + " Ein neuer Versuch – die Wellen kommen weiter!";
+
+  document.getElementById("start").textContent = "Weiter spielen";
+  updateStats();
+}
+
+function winGame() {
+  won = true;
+  running = false;
+  gameOver = true;
+
+  message.textContent =
+    "🎉 Der Turm wurde getroffen! Die Hängebrücke fällt herunter – du bist gerettet!";
+
+  document.getElementById("start").textContent = "Geschafft!";
+}
+
+// --------------------------------------------------
+// ANZEIGE UND RESET
+// --------------------------------------------------
+
+function updateStats() {
+  document.getElementById("lives").textContent =
+    "Bälle: " + lives;
+
+  document.getElementById("water").textContent =
+    "Wasser: " + waterPercentage() + " %";
+
+  document.getElementById("time").textContent =
+    "Zeit: " + Math.floor(elapsed) + " s";
+}
+
+function resetGame() {
+  paddleShift = 0;
+  lives = 10;
+  waterProgress = 0;
+  elapsed = 0;
+
+  waveTimer = 0;
+  waveWarning = false;
+  waveFlash = 0;
+
+  running = false;
+  gameOver = false;
+  won = false;
+
+  tower.x = W / 2;
+  tower.direction = 1;
+
+  generateWall();
+  placeBall();
+
+  message.textContent =
+    "Zerstöre die Sandmauer und erreiche den beweglichen Rettungsturm!";
+
+  document.getElementById("start").textContent = "Spiel starten";
+
+  updateStats();
+}
+
+function startGame() {
+  if (won) return;
+
+  if (gameOver) resetGame();
+
+  if (!running) {
+    launchBall();
+    running = true;
+
+    message.textContent = "";
+    document.getElementById("start").textContent = "Neustart";
+  }
+}
+
+// --------------------------------------------------
+// ANIMATION
+// --------------------------------------------------
+
+function loop(timestamp) {
+  const dt = lastFrame
+    ? Math.min((timestamp - lastFrame) / 16.667, 2)
+    : 1;
+
+  lastFrame = timestamp;
+
+  updatePaddle();
+
+  if (running) {
+    elapsed += dt / 60;
+
+    updateTower(dt);
+    updateWaves(dt);
+
+    if (running) updateBall();
+
+    updateStats();
+  } else if (!gameOver) {
+    placeBall();
+  }
+
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// --------------------------------------------------
+// STEUERUNG
+// --------------------------------------------------
+
+slider.addEventListener("input", () => {
+  updatePaddle();
+
+  if (!running) placeBall();
+});
+
+canvas.addEventListener("pointermove", event => {
+  const rect = canvas.getBoundingClientRect();
+  const minX = getMinX();
+  const maxX = getMaxX();
+
+  const mouseX =
+    (event.clientX - rect.left) * W / rect.width;
+
+  const value = Math.max(
+    0,
+    Math.min(
+      1000,
+      (mouseX - minX) /
+      (maxX - minX) * 1000
+    )
+  );
+
+  slider.value = value;
+  updatePaddle();
+
+  if (!running) placeBall();
+});
+
+document.getElementById("start")
+  .addEventListener("click", startGame);
+
+document.getElementById("restart")
+  .addEventListener("click", resetGame);
+
+resetGame();
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>

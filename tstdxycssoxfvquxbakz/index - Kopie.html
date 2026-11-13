@@ -1,0 +1,753 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sandstein Breakout</title>
+
+<style>
+* { box-sizing:border-box; }
+
+body {
+  margin:0;
+  padding:12px;
+  background:#252b30;
+  color:#f5eee2;
+  font-family:Arial,sans-serif;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+h2 { margin:8px; }
+
+#info {
+  width:min(95vw,700px);
+  display:flex;
+  justify-content:space-between;
+  margin:10px 0;
+}
+
+canvas {
+  width:min(95vw,700px);
+  aspect-ratio:7 / 9;
+  background:#17232c;
+  border:3px solid #8c9a9e;
+  border-radius:8px;
+  touch-action:none;
+}
+
+#controls {
+  width:min(95vw,700px);
+  padding:14px 5px;
+  text-align:center;
+}
+
+input {
+  width:100%;
+  height:30px;
+  accent-color:#e5a44d;
+  touch-action:pan-y;
+}
+
+button {
+  background:#b97837;
+  color:white;
+  border:0;
+  border-radius:8px;
+  padding:12px 28px;
+  margin-top:8px;
+  font-size:16px;
+  cursor:pointer;
+}
+
+#message {
+  min-height:25px;
+  color:#f5c77b;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🏜️ Sandstein Breakout</h2>
+
+<div id="info">
+  <span>Punkte: <b id="score">0</b></span>
+  <span>Steine: <b id="remaining">0</b></span>
+  <span>Leben: <b id="lives">3</b></span>
+</div>
+
+<canvas id="game"></canvas>
+
+<div id="controls">
+  <div>Schlägersteuerung</div>
+  <input type="range" id="position"
+         min="0" max="1000" value="500">
+
+  <div id="message">
+    Start drücken, um den Ball zu starten.
+  </div>
+
+  <button id="start">Spiel starten</button>
+</div>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const slider = document.getElementById("position");
+const startButton = document.getElementById("start");
+
+let W,H,dpr;
+let bricks = [];
+
+let score = 0;
+let lives = 3;
+let running = false;
+let gameOver = false;
+
+// ------------------------------------------------
+// GEOMETRIE
+// ------------------------------------------------
+
+let cx;
+let paddleMinX;
+let paddleMaxX;
+
+const ball = {
+  x:0,
+  y:0,
+  vx:3,
+  vy:-4,
+  radius:7,
+  speed:5
+};
+
+const paddle = {
+  x:0,
+  y:0,
+  angle:0,
+  slope:0,
+  tx:1,
+  ty:0,
+  nx:0,
+  ny:-1,
+  width:65,
+  height:12
+};
+
+// ------------------------------------------------
+// RUNDE W-BAHN AUS DREI HALBKREIS-ÄHNLICHEN BÖGEN
+// ------------------------------------------------
+
+const W_CURVE = {
+  centerY: 0.73,
+  amplitude: 0.12,
+  waves: 2
+};
+
+function wCurveY(x) {
+  const t = (x-paddleMinX) /
+            (paddleMaxX-paddleMinX);
+
+  return H * (
+    W_CURVE.centerY -
+    W_CURVE.amplitude *
+    Math.cos(2*Math.PI*W_CURVE.waves*t)
+  );
+}
+
+function wCurveSlope(x) {
+  const span = paddleMaxX-paddleMinX;
+
+  const t = (x-paddleMinX)/span;
+
+  return H * W_CURVE.amplitude *
+    2*Math.PI*W_CURVE.waves/span *
+    Math.sin(2*Math.PI*W_CURVE.waves*t);
+}
+
+// ------------------------------------------------
+// RESIZE
+// ------------------------------------------------
+
+function resize() {
+
+  const rect = canvas.getBoundingClientRect();
+
+  W = rect.width;
+  H = rect.height;
+
+  dpr = window.devicePixelRatio || 1;
+
+  canvas.width = W*dpr;
+  canvas.height = H*dpr;
+
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  paddle.width = Math.max(48,W*0.095);
+  paddle.height = Math.max(10,H*0.014);
+
+  paddleMinX = paddle.width/2 + ball.radius + 2;
+  paddleMaxX = W - paddleMinX;
+
+  cx = W/2;
+
+  createBricks();
+  updatePaddle();
+  placeBall();
+  draw();
+}
+
+// ------------------------------------------------
+// SCHLÄGER AUF DER GAUSS-KURVE
+// ------------------------------------------------
+
+function updatePaddle() {
+
+  const t = Number(slider.value)/1000;
+
+  paddle.x =
+    paddleMinX +
+    t*(paddleMaxX-paddleMinX);
+
+  paddle.y = wCurveY(paddle.x);
+
+  paddle.slope = wCurveSlope(paddle.x);
+
+  const length = Math.hypot(1,paddle.slope);
+
+  paddle.tx = 1/length;
+  paddle.ty = paddle.slope/length;
+
+  // Normale nach oben
+  paddle.nx = paddle.ty;
+  paddle.ny = -paddle.tx;
+
+  paddle.angle = Math.atan2(
+    paddle.ty,
+    paddle.tx
+  );
+}
+
+slider.addEventListener("input",()=>{
+
+  updatePaddle();
+
+  if(!running) placeBall();
+
+  draw();
+});
+
+// ------------------------------------------------
+// BALL POSITION
+// ------------------------------------------------
+
+function placeBall() {
+
+  ball.x = paddle.x+paddle.nx*24;
+  ball.y = paddle.y+paddle.ny*24;
+
+  ball.vx = 3;
+  ball.vy = -4;
+}
+
+function launchBall() {
+
+  // Ball direkt oberhalb des Schlägers positionieren
+  ball.x = paddle.x + paddle.nx * 24;
+  ball.y = paddle.y + paddle.ny * 24;
+
+  // Flugrichtung entspricht der Schlägernormalen
+  const speed = ball.speed;
+
+  ball.vx = paddle.nx * speed;
+  ball.vy = paddle.ny * speed;
+}
+
+// ------------------------------------------------
+// STEINE: ZWEI VERSCHACHTELTE U-REIHEN
+// ------------------------------------------------
+
+function addBrick(x,y,angle) {
+
+  const bw = Math.max(20,W*0.064);
+  const bh = Math.max(11,H*0.016);
+
+  bricks.push({
+    x,y,angle,
+    w:bw,
+    h:bh,
+    alive:true
+  });
+}
+
+function createURow(rx,ry,topY,legBottom,offset) {
+
+  const bw = Math.max(20,W*0.064);
+
+  // Anzahl der Steine am Rundbogen
+  const segments = Math.max(
+    8,
+    Math.floor(Math.PI*rx/(bw*1.12))
+  );
+
+  // Rundbogen
+  for(let i=0;i<=segments;i++) {
+
+    const a = Math.PI*(i+offset)/segments;
+
+    if(a<0 || a>Math.PI) continue;
+
+    const x = cx-rx*Math.cos(a);
+    const y = topY-ry*Math.sin(a);
+
+    // Tangente an der Ellipse
+    const dx = rx*Math.sin(a);
+    const dy = -ry*Math.cos(a);
+
+    const angle = Math.atan2(dy,dx);
+
+    addBrick(x,y,angle);
+  }
+
+  // Seitliche Schenkel
+  const legRows = Math.max(
+    4,
+    Math.floor((legBottom-topY)/(bw*1.12))
+  );
+
+  for(let i=0;i<=legRows;i++) {
+
+    const t = (i+offset)/legRows;
+
+    if(t<0 || t>1) continue;
+
+    const y = topY+(legBottom-topY)*t;
+
+    // Linker und rechter Schenkel
+    addBrick(cx-rx,y,Math.PI/2);
+    addBrick(cx+rx,y,Math.PI/2);
+  }
+}
+
+function createBricks() {
+
+  bricks = [];
+
+  // Äußere Steinreihe
+  createURow(
+    W*0.34,
+    H*0.21,
+    H*0.30,
+    H*0.59,
+    0
+  );
+
+  // Innere Steinreihe:
+  // leicht nach innen und unten versetzt
+  createURow(
+    W*0.30,
+    H*0.19,
+    H*0.32,
+    H*0.59,
+    0.5
+  );
+
+  updateInfo();
+}
+
+// ------------------------------------------------
+// KOLLISION: KREIS MIT GEDREHTEM RECHTECK
+// ------------------------------------------------
+
+function orientedCollision(px,py,r,rect) {
+
+  const dx = px-rect.x;
+  const dy = py-rect.y;
+
+  const c = Math.cos(rect.angle);
+  const s = Math.sin(rect.angle);
+
+  // In das lokale Koordinatensystem drehen
+  const lx = dx*c+dy*s;
+  const ly = -dx*s+dy*c;
+
+  const qx = Math.max(
+    -rect.w/2,
+    Math.min(lx,rect.w/2)
+  );
+
+  const qy = Math.max(
+    -rect.h/2,
+    Math.min(ly,rect.h/2)
+  );
+
+  const ex = lx-qx;
+  const ey = ly-qy;
+
+  const dist = Math.hypot(ex,ey);
+
+  if(dist>=r) return null;
+
+  let nx,ny;
+
+  if(dist>0.001) {
+
+    nx = ex/dist;
+    ny = ey/dist;
+
+  } else {
+
+    // Sonderfall bei direkter Überdeckung
+    const dxEdge = rect.w/2-Math.abs(lx);
+    const dyEdge = rect.h/2-Math.abs(ly);
+
+    if(dxEdge<dyEdge) {
+      nx = lx>=0 ? 1 : -1;
+      ny = 0;
+    } else {
+      nx = 0;
+      ny = ly>=0 ? 1 : -1;
+    }
+  }
+
+  // Normale zurück in Weltkoordinaten
+  return {
+    x:nx*c-ny*s,
+    y:nx*s+ny*c
+  };
+}
+
+function reflect(nx,ny) {
+
+  const dot = ball.vx*nx+ball.vy*ny;
+
+  ball.vx -= 2*dot*nx;
+  ball.vy -= 2*dot*ny;
+}
+
+// ------------------------------------------------
+// SPIELSTATUS
+// ------------------------------------------------
+
+function updateInfo() {
+
+  document.getElementById("score").textContent=score;
+  document.getElementById("lives").textContent=lives;
+
+  document.getElementById("remaining").textContent=
+    bricks.filter(b=>b.alive).length;
+}
+
+function loseLife() {
+
+  lives--;
+
+  updateInfo();
+
+  if(lives<=0) {
+
+    endGame("Spiel vorbei! Punkte: "+score);
+    return;
+  }
+
+  running=false;
+
+  updatePaddle();
+  placeBall();
+
+  document.getElementById("message").textContent=
+    "Ball verloren! Noch "+lives+" Leben.";
+
+  startButton.textContent="Weiter spielen";
+}
+
+function endGame(message) {
+
+  running=false;
+  gameOver=true;
+
+  document.getElementById("message").textContent=message;
+  startButton.textContent="Neues Spiel";
+}
+
+function resetGame() {
+
+  score=0;
+  lives=3;
+
+  running=false;
+  gameOver=false;
+
+  slider.value=500;
+
+  updatePaddle();
+  createBricks();
+  placeBall();
+
+  document.getElementById("message").textContent=
+    "Start drücken, um den Ball zu starten.";
+
+  startButton.textContent="Spiel starten";
+
+  updateInfo();
+  draw();
+}
+
+function startGame() {
+
+  if(gameOver) {
+    resetGame();
+    return;
+  }
+
+  updatePaddle();
+  launchBall();
+
+  running = true;
+
+  document.getElementById("message").textContent = "";
+  startButton.textContent = "Neustart";
+}
+
+startButton.addEventListener("click",startGame);
+
+// ------------------------------------------------
+// SPIELPHYSIK
+// ------------------------------------------------
+
+function update() {
+
+  if(!running) return;
+
+  ball.x+=ball.vx;
+  ball.y+=ball.vy;
+
+  // Jede Außenwand bedeutet Ballverlust
+  if(
+    ball.x-ball.radius<0 ||
+    ball.x+ball.radius>W ||
+    ball.y-ball.radius<0 ||
+    ball.y+ball.radius>H
+  ) {
+    loseLife();
+    return;
+  }
+
+  // Stein-Kollisionen
+  for(const b of bricks) {
+
+    if(!b.alive) continue;
+
+    const normal=orientedCollision(
+      ball.x,ball.y,ball.radius,b
+    );
+
+    if(normal) {
+
+      b.alive=false;
+      score+=10;
+
+      reflect(normal.x,normal.y);
+
+      // Kleine Trennung vom Stein
+      ball.x+=normal.x*3;
+      ball.y+=normal.y*3;
+
+      break;
+    }
+  }
+
+  // Schläger-Kollision
+  const paddleRect = {
+    x:paddle.x,
+    y:paddle.y,
+    w:paddle.width,
+    h:paddle.height,
+    angle:paddle.angle
+  };
+
+  const hit=orientedCollision(
+    ball.x,ball.y,ball.radius,paddleRect
+  );
+
+  if(hit) {
+
+    // Nur reagieren, wenn der Ball auf den
+    // Schläger zufliegt
+    const approach =
+      ball.vx*hit.x+ball.vy*hit.y;
+
+    if(approach<0) {
+
+      // Trefferposition entlang der Tangente
+      const offset = (
+        (ball.x-paddle.x)*paddle.tx+
+        (ball.y-paddle.y)*paddle.ty
+      )/(paddle.width/2);
+
+      const speed=Math.max(
+        ball.speed,
+        Math.hypot(ball.vx,ball.vy)
+      );
+
+      // Abprallwinkel abhängig vom Treffpunkt
+      const angle=Math.max(
+        -0.70,
+        Math.min(0.70,offset*0.70)
+      );
+
+      const ca=Math.cos(angle);
+      const sa=Math.sin(angle);
+
+      ball.vx=speed*(
+        paddle.nx*ca+paddle.tx*sa
+      );
+
+      ball.vy=speed*(
+        paddle.ny*ca+paddle.ty*sa
+      );
+
+      // Ball aus dem Schläger bewegen
+      ball.x+=paddle.nx*4;
+      ball.y+=paddle.ny*4;
+    }
+  }
+
+  // Keine Steine mehr vorhanden
+  if(bricks.every(b=>!b.alive)) {
+
+    endGame(
+      "Das U ist verschwunden! Punkte: "+score
+    );
+  }
+
+  updateInfo();
+}
+
+// ------------------------------------------------
+// DARSTELLUNG
+// ------------------------------------------------
+
+function drawRotatedRect(
+  x,y,w,h,angle,fill,stroke
+) {
+
+  ctx.save();
+
+  ctx.translate(x,y);
+  ctx.rotate(angle);
+
+  ctx.fillStyle=fill;
+  ctx.fillRect(-w/2,-h/2,w,h);
+
+  ctx.strokeStyle=stroke;
+  ctx.lineWidth=1.3;
+
+  ctx.strokeRect(-w/2,-h/2,w,h);
+
+  ctx.restore();
+}
+
+function draw() {
+
+  ctx.clearRect(0,0,W,H);
+
+  ctx.fillStyle="#17232c";
+  ctx.fillRect(0,0,W,H);
+
+  // Dezentes Raster
+  ctx.strokeStyle="rgba(255,255,255,0.035)";
+
+  for(let y=0;y<H;y+=35) {
+
+    ctx.beginPath();
+    ctx.moveTo(0,y);
+    ctx.lineTo(W,y);
+    ctx.stroke();
+  }
+
+  // Sandsteine
+  for(const b of bricks) {
+
+    if(!b.alive) continue;
+
+    drawRotatedRect(
+      b.x,b.y,b.w,b.h,b.angle,
+      "#c99760","#edc28b"
+    );
+  }
+
+	// W-förmige Schlägerbahn
+	ctx.beginPath();
+
+	for(let i=0;i<=200;i++) {
+
+	  const x = paddleMinX +
+		(paddleMaxX-paddleMinX)*i/200;
+
+	  const y = wCurveY(x);
+
+	  if(i===0) ctx.moveTo(x,y);
+	  else ctx.lineTo(x,y);
+	}
+
+	ctx.strokeStyle="rgba(255,255,255,0.25)";
+	ctx.lineWidth=2;
+	ctx.stroke();
+
+  // Schläger
+  drawRotatedRect(
+    paddle.x,paddle.y,
+    paddle.width,paddle.height,
+    paddle.angle,
+    "#e6a64f","#ffdb9b"
+  );
+
+  // Ball
+  ctx.beginPath();
+
+  ctx.arc(
+    ball.x,ball.y,ball.radius,
+    0,Math.PI*2
+  );
+
+  ctx.fillStyle="#ffffff";
+  ctx.fill();
+
+  ctx.beginPath();
+
+  ctx.arc(
+    ball.x-2,ball.y-2,2,
+    0,Math.PI*2
+  );
+
+  ctx.fillStyle="#cceaff";
+  ctx.fill();
+}
+
+// ------------------------------------------------
+// HAUPTSCHLEIFE
+// ------------------------------------------------
+
+function gameLoop() {
+
+  update();
+  draw();
+
+  requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener("resize",resize);
+
+resize();
+resetGame();
+gameLoop();
+
+</script>
+</body>
+</html>
