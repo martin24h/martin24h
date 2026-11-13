@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Die Flucht aus dem Treibsand</title>
+  <link rel="stylesheet" href="https://martin24h.github.io/martin24h/akcss/inc.css" />
+<title>14. Dezember</title>
 <style>
 * { box-sizing: border-box; }
 
@@ -47,9 +48,57 @@ canvas {
   margin: 14px auto;
 }
 
+/* Anpassung für den Range-Slider: Beide Seiten weiß/hell mit anpassbarem Daumen */
 input[type=range] {
+  -webkit-appearance: none;
   width: 100%;
-  accent-color: #f2b84b;
+  background: transparent;
+}
+
+input[type=range]:focus {
+  outline: none;
+}
+
+/* Schiene (Track) für Webkit (Chrome, Safari, Samsung Internet, Edge) */
+input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 8px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 4px;
+}
+
+/* Schieberegler-Punkt (Thumb) für Webkit */
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 22px;
+  width: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid #79502e;
+  cursor: pointer;
+  margin-top: -7px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Schiene für Firefox */
+input[type=range]::-moz-range-track {
+  width: 100%;
+  height: 8px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 4px;
+}
+
+/* Schieberegler-Punkt für Firefox */
+input[type=range]::-moz-range-thumb {
+  height: 22px;
+  width: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid #79502e;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 button {
@@ -82,10 +131,10 @@ button:hover { background: #ffca68; }
 
 <body>
 <div class="game">
-  <h1>🏖️ Die Flucht aus dem Treibsand - constant speed</h1>
-  <p>
-    Durchbrich die Sandmauer und triff den beweglichen Rettungsturm,
-    bevor das Meer dich verschluckt!
+  <p>Vierzehnter Dezember ... während Du den Wolkenhimmel bewundert hast, scheint etwas seltsames vor sich gegangen zu sein. 
+  Du blickst Dich um und außer dem kleinen Bereich um Dich und die Kiste herum ist alles voller Treibsand, vor Dir ist eine große Sandmauer - 
+  das sieht nach einer Falle aus. Hinter der Sandmauer erspähst Du aber einen Turm mit einer Art Hängebrücke. Ob Du Dich dort vielleicht mit 
+  Hilfe des Schlägers und des Balls aus der Kiste bemerkbar machen kannst bevor die Wellen Dir immer näher kommen? 
   </p>
 
   <div class="stats">
@@ -98,16 +147,16 @@ button:hover { background: #ffca68; }
 
   <div class="controls">
     <input id="slider" type="range" min="0" max="1000" value="500">
-    <div class="small">
+<!--    <div class="small">
       Bewege den Schläger mit dem Regler oder mit der Maus über das Spielfeld.
-    </div>
+    </div> -->
   </div>
 
-  <button id="start">Spiel starten</button>
-  <button id="restart">Neues Spiel</button>
+  <button id="start">Auf geht's</button>
+  <button id="restart">Zur nächsten Bucht schwimmen</button> 
 
   <div id="message">
-    Zerstöre die Sandmauer und erreiche den Rettungsturm!
+<!--    Zerstöre die Sandmauer und erreiche den Rettungsturm!-->
   </div>
 </div>
 
@@ -124,7 +173,6 @@ const message = document.getElementById("message");
 const BASE_PADDLE_MIN_X = 95;
 const BASE_PADDLE_MAX_X = W - 95;
 
-// Dynamische Grenzen, damit sich das W mit den Wellen staucht
 function getMinX() {
   return BASE_PADDLE_MIN_X + Math.min(240, paddleShift * 1.15);
 }
@@ -177,13 +225,12 @@ const tower = {
 };
 
 const BRICK_DISTRIBUTION = {
-  1: 80,  // 70 % einfache Steine
-  2: 20,  // 20 % mittlere Steine
-  3: 0   // 10 % starke Steine
+  1: 100,  
+  2: 0,  
+  3: 0   
 };
 
-// Wellen-Einstellungen
-const WAVE_INTERVAL = 6.5;
+const WAVE_INTERVAL = 10;
 const WAVE_WARNING = 1.4;
 const WATER_SPEED = 0.055;
 
@@ -206,16 +253,11 @@ let lastFrame = 0;
 let paddleShift = 0;
 const PADDLE_WAVE_SHIFT = 9;
 
-// --------------------------------------------------
-// W-FÖRMIGE STRANDLINIE MIT EINGETAUCHTEN WINKELN
-// --------------------------------------------------
-
 function curveY(x) {
   const minX = getMinX();
   const maxX = getMaxX();
   const span = Math.max(50, maxX - minX);
   const rawT = Math.max(0, Math.min(1, (x - minX) / span));
-  // Mapping sorgt für Einstiegs-Winkel an den Außenrändern statt flacher Spitzen
   const t = 0.08 + 0.84 * rawT;
 
   return H * (
@@ -285,10 +327,6 @@ function launchBall() {
   ball.vy = paddle.ny * ball.speed;
 }
 
-// --------------------------------------------------
-// VOLLSTÄNDIGE SANDMAUER
-// --------------------------------------------------
-
 function position(r, c) {
   return {
     x: GRID_X + c * (CELL_W + GAP),
@@ -314,7 +352,6 @@ function generateWall() {
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col < COLS; col++) {
       const p = position(row, col);
-
       const hp = randomBrickStrength();
 	  
       bricks.push({
@@ -330,10 +367,6 @@ function generateWall() {
     }
   }
 }
-
-// --------------------------------------------------
-// WELLEN UND STEINBEWEGUNG
-// --------------------------------------------------
 
 function waterLeft() {
   return 15 + waterProgress;
@@ -415,7 +448,7 @@ function updateWaves(dt) {
   }
 
   if (waterLeft() >= waterRight() - 30) {
-    loseBall("Das Meer hat den Strand überflutet!");
+    loseBall("Das Meer hat den Strand überflutet! Du musst wohl mit der Kiste zur nächsten Bucht schwimmen.");
   }
 }
 
@@ -504,10 +537,6 @@ function drawWaveWarning() {
   }
 }
 
-// --------------------------------------------------
-// RETTUNGSTURM
-// --------------------------------------------------
-
 function updateTower(dt) {
   tower.x += tower.speed * tower.direction * dt;
 
@@ -563,10 +592,6 @@ function drawTower() {
   ctx.textAlign = "center";
   ctx.fillText("RETTUNGSTURM", x, y - 30);
 }
-
-// --------------------------------------------------
-// SPIELFELD ZEICHNEN
-// --------------------------------------------------
 
 function drawBackground() {
   ctx.fillStyle = "#e8c895";
@@ -683,10 +708,6 @@ function draw() {
   drawWaveWarning();
 }
 
-// --------------------------------------------------
-// KOLLISIONEN
-// --------------------------------------------------
-
 function circleRectCollision(circle, rect) {
   const x = Math.max(rect.x, Math.min(circle.x, rect.x + rect.w));
   const y = Math.max(rect.y, Math.min(circle.y, rect.y + rect.h));
@@ -752,16 +773,10 @@ function collideWithPaddle() {
   }
 }
 
-// --------------------------------------------------
-// BALL-PHYSIK MIT ZEITFAKTOR (DT)
-// --------------------------------------------------
-
 function updateBall(dt) {
-  // Bewegung exakt mit dt skalieren, damit sie bei 60Hz und 120Hz identisch und flüssig läuft
   ball.x += ball.vx * dt;
   ball.y += ball.vy * dt;
 
-  // Wasser von links und rechts
   if (
     ball.x - ball.radius <= waterLeft() ||
     ball.x + ball.radius >= waterRight()
@@ -770,7 +785,6 @@ function updateBall(dt) {
     return;
   }
 
-  // Rettungsturm getroffen?
   const towerRect = {
     x: tower.x - tower.width / 2,
     y: tower.y - 24,
@@ -783,13 +797,11 @@ function updateBall(dt) {
     return;
   }
 
-  // Oberer Spielfeldrand
   if (ball.y - ball.radius < 0) {
     ball.y = ball.radius;
     ball.vy = Math.abs(ball.vy);
   }
 
-  // Sandsteine
   for (const b of [...bricks]) {
     if (circleRectCollision(ball, b)) {
       const oldY = ball.y - ball.vy * dt;
@@ -810,7 +822,6 @@ function updateBall(dt) {
 
   collideWithPaddle();
 
-  // Ins Meer gefallen?
   if (ball.y > shorelineY(ball.x) + 8) {
     loseBall("Der Ball ist ins Meer gefallen!");
     return;
@@ -818,7 +829,7 @@ function updateBall(dt) {
 
   if (bricks.length === 0) {
     message.textContent =
-      "Die Sandmauer ist durchbrochen! Triff jetzt den Rettungsturm!";
+      "Die Sandmauer ist durchbrochen! Ob Du auch den Turm triffst?";
   }
 }
 
@@ -831,7 +842,7 @@ function loseBall(reason) {
   if (lives <= 0) {
     gameOver = true;
     message.textContent = reason + " Keine Bälle mehr!";
-    document.getElementById("start").textContent = "Neu versuchen";
+    document.getElementById("start").textContent = "Zur nächsten Bucht schwimmen.";
     updateStats();
     return;
   }
@@ -841,7 +852,7 @@ function loseBall(reason) {
   message.textContent =
     reason + " Ein neuer Versuch – die Wellen kommen weiter!";
 
-  document.getElementById("start").textContent = "Weiter spielen";
+  document.getElementById("start").textContent = "Nächster Ball.";
   updateStats();
 }
 
@@ -851,14 +862,10 @@ function winGame() {
   gameOver = true;
 
   message.textContent =
-    "🎉 Der Turm wurde getroffen! Die Hängebrücke fällt herunter – du bist gerettet!";
+    "🎉 Du hast den Turm getroffen! Die Hängebrücke fällt herunter – Du bist gerettet! Im Inneren des Turms findest Du einen Zettel mit D-1 darauf. Und jetzt nichts wie weg vom Strand!";
 
   document.getElementById("start").textContent = "Geschafft!";
 }
-
-// --------------------------------------------------
-// ANZEIGE UND RESET
-// --------------------------------------------------
 
 function updateStats() {
   document.getElementById("lives").textContent =
@@ -892,9 +899,9 @@ function resetGame() {
   placeBall();
 
   message.textContent =
-    "Zerstöre die Sandmauer und erreiche den beweglichen Rettungsturm!";
+    ""; // "Zerstöre die Sandmauer und erreiche den beweglichen Rettungsturm!";
 
-  document.getElementById("start").textContent = "Spiel starten";
+  document.getElementById("start").textContent = "Auf geht's";
 
   updateStats();
 }
@@ -913,14 +920,9 @@ function startGame() {
   }
 }
 
-// --------------------------------------------------
-// OPTIMIERTER ANIMATIONS- UND PHYSIK-LOOP
-// --------------------------------------------------
-
 function loop(timestamp) {
   if (!lastFrame) lastFrame = timestamp;
   
-  // Begrenze dt, damit nach Tabsprüngen oder Rucklern keine extremen Sprünge entstehen
   const rawDt = (timestamp - lastFrame) / 16.667;
   const dt = Math.min(Math.max(rawDt, 0.2), 3);
 
@@ -934,7 +936,7 @@ function loop(timestamp) {
     updateTower(dt);
     updateWaves(dt);
 
-    if (running) updateBall(dt); // dt wird an die Ball-Physik übergeben
+    if (running) updateBall(dt);
 
     updateStats();
   } else if (!gameOver) {
@@ -944,10 +946,6 @@ function loop(timestamp) {
   draw();
   requestAnimationFrame(loop);
 }
-
-// --------------------------------------------------
-// STEUERUNG
-// --------------------------------------------------
 
 slider.addEventListener("input", () => {
   updatePaddle();
