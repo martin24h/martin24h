@@ -209,12 +209,12 @@ h1 { margin: 10px 0; color: #ffe69a; }
 <body>
 
 <p>Zwölfter Dezember ... es hat tatsächlich funktioniert, der Taxi-Fahrer hat Dich zum Strand gebracht und Du denkst Dir nur mehr ... ab ins Meer und Tauchen. Während Du den Strand entlang Richtung Meer läufst, stolperst Du über eine große Kiste mit einem kleinen 
-Schlitz. Sieht aus als könnte man da Münzen einwerfen - was auch immer dann passiert. Münzen weg oder eine Überraschung? Naja, zuerst musst Du mal Münzen finden ... vielleicht im Meer?<p>
+Schlitz. Sieht aus als könnte man da Münzen einwerfen - was auch immer dann passiert. Münzen weg oder eine Überraschung? Naja, zuerst musst Du erst einmal Münzen finden ... vielleicht im Meer?<p>
 Vor Dir am Meeresgrund kannst Du jedenfalls viele kleine Schatzkisten erkennen ... aber welche beinhalten wirklich einen Schatz und in welchen sitzt vielleicht eine böse Seegurke, die alles was Du in der Hand hältst einsaugt, sodass Du wieder mit leeren Händen da stehst? 
 </p>
 
 <div id="spielInfo">
-  <div id="zaehler">0 / 20 Münzen</div>
+  <div id="zaehler">0 / 17 Münzen</div>
   <div id="fortschritt"><div id="fortschrittInnen"></div></div>
   <div id="status">Meeresbilder werden geladen ...</div>
 </div>
@@ -234,9 +234,9 @@ Vor Dir am Meeresgrund kannst Du jedenfalls viele kleine Schatzkisten erkennen .
 
 <div id="gewonnen">
   <h2>🎉 Geschafft!</h2>
-  <p>Du hast 20 Münzen in der Hand - das schaut gut aus und mehr kannst Du auch nicht mehr halten.</p>
+  <p>Du hast 17 Münzen in der Hand - das schaut gut aus und mehr kannst Du auch nicht mehr halten.</p>
   <p>Glücklich tauchst Du wieder auf und wirfst die Münzen einzeln in den Schlitz der Kiste am Strand.</p>
-  <p>Nachdem Du alle Deine 20 Münzen eingeworfen hast, beginnt die Kiste zu zittern ... und krachend springt der Deckel auf.<p>
+  <p>Nachdem Du alle Deine 17 Münzen eingeworfen hast, beginnt die Kiste zu zittern ... und krachend springt der Deckel auf.<p>
   In der Kiste findest Du eine Karte, auf der groß <strong>D-5</strong> steht.</p>
   <p>Und dann liegt da noch ein komisch geformter Schläger drinnen - wofür der wohl gut ist?</p>
 </div>
@@ -245,7 +245,7 @@ Vor Dir am Meeresgrund kannst Du jedenfalls viele kleine Schatzkisten erkennen .
 // ======================================
 // EINSTELLUNGEN
 // ======================================
-const ZIEL = 1;
+const ZIEL = 17;
 const START_DAUER = 1800;
 const MIN_DAUER = 900;
 const BILD_ABSTAND = 12;
@@ -256,7 +256,6 @@ const MAX_BILD_GROESSE = 100;
 // Diese Dateien und der Ordner bleiben wie bisher.
 // ======================================
 const hintergrundDateien = [
-  "Bild0.jpg",
   "Bild1.jpg",
   "Bild2.jpg",
   "Bild3.jpg",
@@ -265,7 +264,10 @@ const hintergrundDateien = [
   "Bild6.jpg",
   "Bild7.jpg",
   "Bild8.jpg",
-  "Bild9.jpg"
+  "Bild9.jpg",
+  "Bild10.jpg",
+  "Bild11.jpg",
+  "Bild12.jpg"
 ];
 
 // ======================================
@@ -585,7 +587,7 @@ function naechsteRunde() {
 
   timer = setTimeout(() => {
     if (aktuelleRunde !== rundenId || !aktiv) return;
-    fehler("Hm, die Kiste ist Dir zu schwer geworden und fällt Dir aus der Hand.");
+    fehler("Hm, die Münzen sind Dir zu schwer geworden und fallen Dir wieder alle aus der Hand.");
   }, dauer);
 }
 
@@ -627,7 +629,7 @@ function spielGewonnen() {
   rundenId++;
   kistenAusblenden();
 
-  status.textContent = "Du hast 20 Münzen gesammelt!";
+  status.textContent = "Du hast 17 Münzen gesammelt!";
   gewonnen.style.display = "block";
   nochmalButton.style.display = "inline-block";
 }
