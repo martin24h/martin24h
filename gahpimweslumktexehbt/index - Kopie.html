@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<title>13. Dezember</title>
+  <link rel="stylesheet" href="https://martin24h.github.io/martin24h/akcss/inc.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+#geschwindigkeitPanel {
+  max-width: 350px;
+  margin: 20px auto;
+  padding: 15px;
+  background: #2a5298;
+  color: white;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+#geschwindigkeit {
+  width: 100%;
+  margin-top: 12px;
+}
+
+body {
+  margin: 0;
+  padding: 15px;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  color: #1e3c72;
+  background: #1e3c72;
+}
+
+p {
+  color: #ffffff;
+  max-width: 600px;
+  margin: 10px auto;
+  line-height: 1.5;
+}
+
+h1 {
+  margin-top: 10px;
+  color: white;
+}
+
+#himmel {
+  position: relative;
+  width: min(94vw, 600px);
+  aspect-ratio: 1 / 1;
+  margin: 20px auto;
+  overflow: hidden;
+  background: linear-gradient(to bottom, #4aa3df, #a1d6ff);
+  border: 2px solid #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+  touch-action: manipulation;
+}
+
+.hintergrundwolke {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 50px;
+  pointer-events: none;
+  filter: blur(2px);
+  animation: windDrift linear infinite;
+}
+
+@keyframes windDrift {
+  from { transform: translateX(-150px); }
+  to { transform: translateX(750px); }
+}
+
+#linien {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.verbindungen-gruppe {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 4px rgba(255,255,255,0.8));
+}
+
+/* Echte, flauschige Wolkenform ohne störrische Pseudo-Elemente */
+.wolke {
+  position: absolute;
+  width: 52px;
+  height: 32px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border-radius: 50px;
+  background: #ffffff;
+  cursor: pointer;
+  z-index: 2;
+  touch-action: manipulation;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  transition: transform 0.2s, filter 0.3s;
+}
+
+.wolke::before {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background: #ffffff;
+  border-radius: 50%;
+  top: -10px;
+  left: 8px;
+  box-shadow: inset 0 -2px 3px rgba(0,0,0,0.05);
+}
+
+.wolke::after {
+  content: '';
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  background: #ffffff;
+  border-radius: 50%;
+  top: -13px;
+  right: 8px;
+  box-shadow: inset 0 -2px 3px rgba(0,0,0,0.05);
+}
+
+/* Gelöste Wolken werden sofort dunkelblau/grau gedimmt */
+.wolke.vervollstaendigt {
+  filter: brightness(0.6) hue-rotate(180deg) !important;
+  cursor: default;
+  pointer-events: none;
+}
+
+.wolke.aktiv {
+  background: #fff68f !important;
+  filter: none !important;
+  box-shadow: 
+    0 0 15px white,
+    0 0 30px #ffeb3b,
+    0 0 45px #ff9800;
+  transform: translate(-50%, -50%) scale(1.3);
+}
+.wolke.aktiv::before, .wolke.aktiv::after {
+  background: #fff68f !important;
+}
+
+.wolke.richtig {
+  background: #ffffff !important;
+  box-shadow: 0 0 10px #fff;
+}
+
+#status {
+  min-height: 45px;
+  font-size: 18px;
+  line-height: 1.4;
+  color: white;
+  font-weight: bold;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+#geloest {
+  display: none;
+  margin: 20px auto;
+  padding: 20px;
+  max-width: 560px;
+  color: #ffffff;
+  background: #1e3c72;
+  border: 2px solid #ffeb3b;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+</style>
+</head>
+
+<body>
+
+<p>Dreizehnter Dezember ... glücklich über die offene Kiste, aber müde vom langen Tauchen legst Du Dich in den Sand und schaust in den wunderbaren blauen Himmel. 
+Leider ziehen Wolken auf, aber sie sehen schön aus und sind vielleicht sogar nützlich?</p>
+
+<div id="himmel">
+  <svg id="linien" viewBox="0 0 100 100" preserveAspectRatio="none">
+    <g id="verbindungen-0" class="verbindungen-gruppe"></g>
+    <g id="verbindungen-1" class="verbindungen-gruppe"></g>
+    <g id="verbindungen-2" class="verbindungen-gruppe"></g>
+    <g id="verbindungen-3" class="verbindungen-gruppe"></g>
+    <g id="verbindungen-4" class="verbindungen-gruppe"></g>
+  </svg>
+</div>
+
+<div id="status">...</div>
+
+<div id="geschwindigkeitPanel" style="display: none;">
+  <label for="geschwindigkeit">
+    Anzeige-Geschwindigkeit:
+    <span id="geschwindigkeitWert">0,35</span> Sekunden
+  </label>
+  <input type="range" id="geschwindigkeit" min="200" max="2000" step="100" value="350">
+</div>
+
+<div id="geloest">
+  <p>Wow, es tauchen keine neuen Wolken auf - solltest Du Dir diese Wolkenformation vielleicht merken?</p>
+</div>
+
+<script>
+
+const himmel = document.getElementById("himmel");
+const status = document.getElementById("status");
+
+let aktuelleWolken = [];
+let reihenfolge = [];
+let eingabe = [];
+
+let aktuellesBild = 0;
+let pause = 350;
+let fehlerAnzahl = 0;
+let aktiv = false;
+let laeuftVorfuehrung = false;
+let aktuellerTimeout = null;
+
+let angeklickt = new Set();
+let gezeichneteLinien = new Set();
+
+let animationId = null;
+let alleWolkenDaten = [];
+
+const wolkenbilder = [
+{
+  name: "B – Strich",
+  punkte: [[20, 18], [20, 32], [20, 48], [20, 64], [20, 80]],
+  linien: [[0,1], [1,2], [2,3], [3,4]]
+},
+{
+  name: "B – Oberer Bogen",
+  punkte: [[20, 18], [30, 16], [42, 22], [42, 34], [30, 48], [20, 48]],
+  linien: [[0,1], [1,2], [2,3], [3,4], [4,5]]
+},
+{
+  name: "B – Unterer Bogen",
+  punkte: [[20, 48], [32, 50], [44, 58], [42, 74], [30, 82], [20, 80]],
+  linien: [[0,1], [1,2], [2,3], [3,4], [4,5]]
+},
+{
+  name: "3 – Oberer Teil",
+  punkte: [[58, 20], [72, 16], [82, 24], [75, 38], [65, 48]],
+  linien: [[0,1], [1,2], [2,3], [3,4]]
+},
+{
+  name: "3 – Unterer Teil",
+  punkte: [[65, 48], [78, 56], [82, 70], [70, 82], [58, 76]],
+  linien: [[0,1], [1,2], [2,3], [3,4]]
+}
+];
+
+function zufallsReihenfolge(punkte) {
+  const anzahl = punkte.length;
+  if (anzahl < 4) return punkte.map((_, i) => i);
+
+  let ergebnis = [];
+  for (let versuch = 0; versuch < 500; versuch++) {
+    ergebnis = punkte.map((_, i) => i);
+    for (let i = ergebnis.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ergebnis[i], ergebnis[j]] = [ergebnis[j], ergebnis[i]];
+    }
+
+    const x = ergebnis.map(i => punkte[i][0]);
+    const y = ergebnis.map(i => punkte[i][1]);
+
+    const xAuf = x.every((w, i) => i === 0 || w > x[i - 1]);
+    const xAb = x.every((w, i) => i === 0 || w < x[i - 1]);
+    const yAuf = y.every((w, i) => i === 0 || w > y[i - 1]);
+    const yAb = y.every((w, i) => i === 0 || w < y[i - 1]);
+
+    if (!xAuf && !xAb && !yAuf && !yAb) return ergebnis;
+  }
+  return ergebnis;
+}
+
+function hintergrundErzeugen() {
+  for (let i = 0; i < 5; i++) {
+    const wolke = document.createElement("div");
+    wolke.className = "hintergrundwolke";
+    wolke.style.width = (60 + Math.random() * 80) + "px";
+    wolke.style.height = (20 + Math.random() * 15) + "px";
+    wolke.style.top = (Math.random() * 90) + "%";
+    wolke.style.left = "-150px";
+    wolke.style.animationDuration = (15 + Math.random() * 20) + "s";
+    wolke.style.animationDelay = (Math.random() * 15) + "s";
+    himmel.appendChild(wolke);
+  }
+}
+
+function wolkenbildErzeugen() {
+  if (aktuellerTimeout) clearTimeout(aktuellerTimeout);
+
+  angeklickt.clear();
+  gezeichneteLinien.clear();
+
+  const bild = wolkenbilder[aktuellesBild];
+  reihenfolge = zufallsReihenfolge(bild.punkte);
+
+  aktuelleWolken = bild.punkte.map((punkt, index) => {
+    const el = document.createElement("div");
+    el.className = "wolke";
+    
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      anklicken(index);
+    });
+
+    himmel.appendChild(el);
+
+    const wData = {
+      el: el,
+      baseX: punkt[0],
+      baseY: punkt[1],
+      offsetX: Math.random() * 100,
+      offsetY: Math.random() * 100,
+      currentX: punkt[0],
+      currentY: punkt[1],
+      bildIndex: aktuellesBild
+    };
+
+    alleWolkenDaten.push(wData);
+    return wData;
+  });
+
+  if (!animationId) {
+    starteWindAnimation();
+  }
+}
+
+function starteWindAnimation() {
+  let time = 0;
+  function update() {
+    time += 0.02;
+
+    alleWolkenDaten.forEach((w) => {
+      w.currentX = w.baseX + Math.sin(time + w.offsetX) * 3.5;
+      w.currentY = w.baseY + Math.cos(time * 1.8 + w.offsetY) * 2.8;
+
+      if (w.el) {
+        w.el.style.left = w.currentX + "%";
+        w.el.style.top = w.currentY + "%";
+        
+        // Bereits gelöste Runden dauerhaft per Filter-Klasse abdunkeln
+        if (w.bildIndex < aktuellesBild) {
+          w.el.classList.add("vervollstaendigt");
+        }
+      }
+    });
+
+    aktualisiereAlleLinienPositionen();
+    animationId = requestAnimationFrame(update);
+  }
+  update();
+}
+
+function linieZeichnen(a, b, bildIndex) {
+  const gruppe = document.getElementById("verbindungen-" + bildIndex);
+  if (!gruppe) return;
+
+  const linie = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  linie.setAttribute("data-a", a);
+  linie.setAttribute("data-b", b);
+  linie.setAttribute("data-bild", bildIndex);
+  
+  let globalOffset = 0;
+  for(let i=0; i<bildIndex; i++) {
+    globalOffset += wolkenbilder[i].punkte.length;
+  }
+
+  const w1 = alleWolkenDaten[globalOffset + a];
+  const w2 = alleWolkenDaten[globalOffset + b];
+
+  if (w1 && w2) {
+    linie.setAttribute("x1", w1.currentX);
+    linie.setAttribute("y1", w1.currentY);
+    linie.setAttribute("x2", w2.currentX);
+    linie.setAttribute("y2", w2.currentY);
+  }
+  
+  gruppe.appendChild(linie);
+}
+
+function aktualisiereAlleLinienPositionen() {
+  const alleLinien = document.querySelectorAll("#linien line");
+  
+  alleLinien.forEach(linie => {
+    const a = parseInt(linie.getAttribute("data-a"));
+    const b = parseInt(linie.getAttribute("data-b"));
+    const bildIdx = parseInt(linie.getAttribute("data-bild"));
+
+    let globalOffset = 0;
+    for(let i=0; i<bildIdx; i++) {
+      globalOffset += wolkenbilder[i].punkte.length;
+    }
+
+    const w1 = alleWolkenDaten[globalOffset + a];
+    const w2 = alleWolkenDaten[globalOffset + b];
+
+    if (w1 && w2) {
+      linie.setAttribute("x1", w1.currentX);
+      linie.setAttribute("y1", w1.currentY);
+      linie.setAttribute("x2", w2.currentX);
+      linie.setAttribute("y2", w2.currentY);
+    }
+  });
+
+  if (!aktiv) return;
+
+  const bild = wolkenbilder[aktuellesBild];
+  bild.linien.forEach((linie, index) => {
+    const a = linie[0];
+    const b = linie[1];
+    const schluessel = aktuellesBild + "-" + index;
+
+    if (angeklickt.has(a) && angeklickt.has(b) && !gezeichneteLinien.has(schluessel)) {
+      linieZeichnen(a, b, aktuellesBild);
+      gezeichneteLinien.add(schluessel);
+    }
+  });
+}
+
+function vorfuehren() {
+  aktiv = false;
+  laeuftVorfuehrung = true;
+  eingabe = [];
+
+  aktuelleWolken.forEach(w => {
+    w.el.classList.remove("aktiv", "richtig");
+  });
+  angeklickt.clear();
+
+  const bild = wolkenbilder[aktuellesBild];
+  bild.linien.forEach((_, index) => {
+    gezeichneteLinien.delete(aktuellesBild + "-" + index);
+  });
+
+  const gruppe = document.getElementById("verbindungen-" + aktuellesBild);
+  if (gruppe) gruppe.innerHTML = "";
+
+  status.textContent = "..."; /* Der Wind treibt die Wolken ... Schau genau hin!"; */
+
+  let schritt = 0;
+  function zeigeNaechstenStern() {
+    if (!laeuftVorfuehrung) return;
+
+    if (schritt > 0 && aktuelleWolken[reihenfolge[schritt - 1]]) {
+      aktuelleWolken[reihenfolge[schritt - 1]].el.classList.remove("aktiv");
+    }
+
+    if (schritt < reihenfolge.length) {
+      const idx = reihenfolge[schritt];
+      if (aktuelleWolken[idx]) {
+        aktuelleWolken[idx].el.classList.add("aktiv");
+      }
+      schritt++;
+      aktuellerTimeout = setTimeout(zeigeNaechstenStern, pause);
+    } else {
+      if (aktuelleWolken[reihenfolge[reihenfolge.length - 1]]) {
+        aktuelleWolken[reihenfolge[reihenfolge.length - 1]].el.classList.remove("aktiv");
+      }
+      status.textContent = "...";
+      aktiv = true;
+      laeuftVorfuehrung = false;
+    }
+  }
+
+  zeigeNaechstenStern();
+}
+
+function anklicken(index) {
+  if (!aktiv || laeuftVorfuehrung) return;
+
+  const erwartet = reihenfolge[eingabe.length];
+
+  if (index !== erwartet) {
+    aktiv = false;
+    fehlerAnzahl++;
+
+    if (fehlerAnzahl >= 6) {
+      status.textContent = "Wäre es nicht toll, wenn Du den Wolkenhimmel ein bisschen rütteln könntest?";
+    } else if (fehlerAnzahl >= 3) {
+      status.textContent = "Hm, wenn die Wolken doch nur langsamer aufleuchten würden ...";
+    } else {
+      status.textContent = "Irgendwas passt nicht - Du musst es wohl weiter versuchen ...";
+    }
+
+    reihenfolge = zufallsReihenfolge(wolkenbilder[aktuellesBild].punkte);
+    aktuellerTimeout = setTimeout(vorfuehren, 3000);
+    return;
+  }
+
+  aktuelleWolken[index].el.classList.add("richtig");
+  eingabe.push(index);
+  angeklickt.add(index);
+
+  aktualisiereAlleLinienPositionen();
+
+  if (eingabe.length === reihenfolge.length) {
+    aktiv = false;
+
+    // Sobald das Teilstück geschafft ist, sofort die Klasse für die dunkelblaue/graue Verfärbung setzen
+    aktuelleWolken.forEach(w => {
+      w.el.classList.add("vervollstaendigt");
+    });
+
+    aktuellesBild++;
+
+    if (aktuellesBild >= wolkenbilder.length) {
+      status.textContent = "";
+      document.getElementById("geloest").style.display = "block";
+      return;
+    }
+
+    status.textContent = "Sehr gut! Aber da ziehen noch mehr Wolken auf ...";
+    aktuellerTimeout = setTimeout(neueRunde, 4000);
+  }
+}
+
+function neueRunde() {
+  fehlerAnzahl = 0;
+  wolkenbildErzeugen();
+  vorfuehren();
+}
+
+const geschwindigkeitPanel = document.getElementById("geschwindigkeitPanel");
+const geschgeschwindigkeit = document.getElementById("geschwindigkeit");
+const geschgeschwindigkeitWert = document.getElementById("geschwindigkeitWert");
+
+geschwindigkeit.addEventListener("input", () => {
+  pause = Number(geschwindigkeit.value);
+  geschwindigkeitWert.textContent = (pause / 1000).toFixed(2).replace(".", ",");
+});
+
+let himmelTipps = 0;
+let himmelTimer;
+
+himmel.addEventListener("click", (event) => {
+  if (event.target.closest(".wolke")) return;
+
+  himmelTipps++;
+  clearTimeout(himmelTimer);
+
+  himmelTimer = setTimeout(() => { himmelTipps = 0; }, 2000);
+
+  if (himmelTipps >= 5) {
+    geschwindigkeitPanel.style.display =
+      geschwindigkeitPanel.style.display === "none" ? "block" : "none";
+    himmelTipps = 0;
+  }
+});
+
+window.addEventListener("load", () => {
+  hintergrundErzeugen();
+  neueRunde();
+});
+
+</script>
+
+</body>
+</html>
