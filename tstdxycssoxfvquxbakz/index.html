@@ -753,13 +753,15 @@ function collideWithPaddle() {
 }
 
 // --------------------------------------------------
-// SPIELABLAUF
+// BALL-PHYSIK MIT ZEITFAKTOR (DT)
 // --------------------------------------------------
 
-function updateBall() {
-  ball.x += ball.vx;
-  ball.y += ball.vy;
+function updateBall(dt) {
+  // Bewegung exakt mit dt skalieren, damit sie bei 60Hz und 120Hz identisch und flüssig läuft
+  ball.x += ball.vx * dt;
+  ball.y += ball.vy * dt;
 
+  // Wasser von links und rechts
   if (
     ball.x - ball.radius <= waterLeft() ||
     ball.x + ball.radius >= waterRight()
@@ -768,6 +770,7 @@ function updateBall() {
     return;
   }
 
+  // Rettungsturm getroffen?
   const towerRect = {
     x: tower.x - tower.width / 2,
     y: tower.y - 24,
@@ -780,14 +783,16 @@ function updateBall() {
     return;
   }
 
+  // Oberer Spielfeldrand
   if (ball.y - ball.radius < 0) {
     ball.y = ball.radius;
     ball.vy = Math.abs(ball.vy);
   }
 
+  // Sandsteine
   for (const b of [...bricks]) {
     if (circleRectCollision(ball, b)) {
-      const oldY = ball.y - ball.vy;
+      const oldY = ball.y - ball.vy * dt;
 
       if (
         oldY + ball.radius <= b.y ||
@@ -805,6 +810,7 @@ function updateBall() {
 
   collideWithPaddle();
 
+  // Ins Meer gefallen?
   if (ball.y > shorelineY(ball.x) + 8) {
     loseBall("Der Ball ist ins Meer gefallen!");
     return;
@@ -908,13 +914,15 @@ function startGame() {
 }
 
 // --------------------------------------------------
-// ANIMATION
+// OPTIMIERTER ANIMATIONS- UND PHYSIK-LOOP
 // --------------------------------------------------
 
 function loop(timestamp) {
-  const dt = lastFrame
-    ? Math.min((timestamp - lastFrame) / 16.667, 2)
-    : 1;
+  if (!lastFrame) lastFrame = timestamp;
+  
+  // Begrenze dt, damit nach Tabsprüngen oder Rucklern keine extremen Sprünge entstehen
+  const rawDt = (timestamp - lastFrame) / 16.667;
+  const dt = Math.min(Math.max(rawDt, 0.2), 3);
 
   lastFrame = timestamp;
 
@@ -926,7 +934,7 @@ function loop(timestamp) {
     updateTower(dt);
     updateWaves(dt);
 
-    if (running) updateBall();
+    if (running) updateBall(dt); // dt wird an die Ball-Physik übergeben
 
     updateStats();
   } else if (!gameOver) {
