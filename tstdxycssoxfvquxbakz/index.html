@@ -225,8 +225,8 @@ const tower = {
 };
 
 const BRICK_DISTRIBUTION = {
-  1: 100,  
-  2: 0,  
+  1: 80,  
+  2: 20,  
   3: 0   
 };
 
@@ -510,10 +510,10 @@ function drawWater() {
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 12px Arial";
   ctx.textAlign = "left";
-  ctx.fillText("MEER", 12, 18);
+  ctx.fillText("", 12, 18);
 
   ctx.textAlign = "right";
-  ctx.fillText("MEER", W - 12, 18);
+  ctx.fillText("", W - 12, 18);
 }
 
 function drawWaveWarning() {
@@ -842,7 +842,7 @@ function loseBall(reason) {
   if (lives <= 0) {
     gameOver = true;
     message.textContent = reason + " Keine Bälle mehr!";
-    document.getElementById("start").textContent = "Zur nächsten Bucht schwimmen.";
+    document.getElementById("start").textContent = "Zur nächsten Bucht schwimmen";
     updateStats();
     return;
   }
@@ -852,7 +852,7 @@ function loseBall(reason) {
   message.textContent =
     reason + " Ein neuer Versuch – die Wellen kommen weiter!";
 
-  document.getElementById("start").textContent = "Nächster Ball.";
+  document.getElementById("start").textContent = "Nächster Ball";
   updateStats();
 }
 
