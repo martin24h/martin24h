@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fünfzehnter Dezember</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 10px;
+    background: #172b3a;
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+
+h1 { font-size: clamp(22px, 5vw, 32px); }
+
+#game {
+    display: block;
+    width: 100%;
+    max-width: 900px;
+    height: auto;
+    margin: 12px auto;
+    border: 3px solid #d8e7ee;
+    border-radius: 12px;
+}
+
+.panel {
+    max-width: 900px;
+    margin: 12px auto;
+    padding: 14px;
+    background: #263e50;
+    border: 1px solid #547286;
+    border-radius: 12px;
+}
+
+.mixer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 520px;
+    margin: auto;
+}
+
+.color-row {
+    display: grid;
+    grid-template-columns: 42px 1fr 42px;
+    align-items: center;
+    gap: 10px;
+}
+
+.color-bar {
+    height: 24px;
+    background: #14232d;
+    border: 2px solid #91a9b7;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.color-fill { height: 100%; width: 0%; }
+
+#redFill { background: #f04444; }
+#greenFill { background: #39cf70; }
+#blueFill { background: #438cf5; }
+
+.adjust {
+    width: 42px;
+    height: 34px;
+    border: 0;
+    border-radius: 7px;
+    color: white;
+    font-size: 23px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.minus { background: #a53c3c; }
+.plus { background: #268b58; }
+
+.preview-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+#colorPreview {
+    width: 54px;
+    height: 32px;
+    border: 2px solid white;
+    border-radius: 6px;
+    background: black;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin-top: 14px;
+}
+
+.move {
+    min-width: 115px;
+    padding: 13px 20px;
+    border: 0;
+    border-radius: 9px;
+    background: #e5a83c;
+    color: #182a36;
+    font-size: 19px;
+    font-weight: bold;
+    cursor: pointer;
+    touch-action: none;
+}
+
+#restart {
+    margin-top: 12px;
+    padding: 10px 20px;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+#message {
+    min-height: 28px;
+    margin: 10px auto;
+    font-weight: bold;
+}
+
+.instructions {
+    max-width: 900px;
+    margin: 10px auto;
+    line-height: 1.5;
+    color: #dceaf0;
+    font-size: 14px;
+}
+
+@media (max-width: 480px) {
+    .panel { padding: 10px; }
+    .color-row { grid-template-columns: 38px 1fr 38px; gap: 7px; }
+    .adjust { width: 38px; }
+    .move { min-width: 105px; padding: 12px 16px; }
+}
+</style>
+</head>
+
+<body>
+<div class="instructions">
+    Fünfzehnter Dezember ... Deine Flucht vom Strand ist schwieriger als gedacht. Die Treppen entlang der Felsen, die Du genutzt hattest,
+	um zum Strand zu kommen, sind weg. Verdammt. Aber dafür siehst Du einen Heißluftballon am Strand stehen. Ob der Dich nach oben
+	bringen kann? Und wenn ja, wie? 
+</div>
+
+<canvas id="game" width="900" height="540"></canvas>
+
+<div class="panel">
+    <div class="mixer">
+        <div class="color-row">
+            <button class="adjust minus" onclick="removeColor('r')">-</button>
+            <div class="color-bar"><div class="color-fill" id="redFill"></div></div>
+            <button class="adjust plus" onclick="addColor('r')">+</button>
+        </div>
+
+        <div class="color-row">
+            <button class="adjust minus" onclick="removeColor('g')">-</button>
+            <div class="color-bar"><div class="color-fill" id="greenFill"></div></div>
+            <button class="adjust plus" onclick="addColor('g')">+</button>
+        </div>
+
+        <div class="color-row">
+            <button class="adjust minus" onclick="removeColor('b')">-</button>
+            <div class="color-bar"><div class="color-fill" id="blueFill"></div></div>
+            <button class="adjust plus" onclick="addColor('b')">+</button>
+        </div>
+    </div>
+
+<!--    <div class="preview-wrap">
+        <span>Aktuelle Mischfarbe:</span>
+        <div id="colorPreview"></div>
+    </div> -->
+
+    <div class="controls">
+        <button class="move" id="leftBtn">◀ Links</button>
+        <button class="move" id="rightBtn">Rechts ▶</button>
+    </div>
+
+    <div id="message"></div>
+<!--    <button id="restart" onclick="resetGame()">Spiel neu starten</button> -->
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const W = canvas.width;
+const H = canvas.height;
+
+const START_Y = 455;
+const GOAL_Y = 75;
+
+let paint, balloon, cannon;
+let gameState = "playing";
+
+let colorTimer = 0;
+
+let windTimer = 0;
+let windTarget = 0;
+let windStrength = 0;
+
+let lastTime = performance.now();
+let keys = { left: false, right: false };
+
+let particles = [];
+let celebrationTimer = 0;
+let sunProgress = 0;
+
+function resetGame() {
+    paint = { r: 75, g: 95, b: 55 };
+
+    balloon = {
+        x: W / 2,
+        y: START_Y,
+        vx: 0,
+        vy: 0
+    };
+
+    cannon = {
+        x: 0,
+        y: 480,
+        speed: 260
+    };
+
+    gameState = "playing";
+    colorTimer = 0;
+
+    windTimer = 0;
+    windTarget = 0;
+    windStrength = 0;
+
+    particles = [];
+    celebrationTimer = 0;
+    sunProgress = 0;
+
+    lastTime = performance.now();
+    keys = { left: false, right: false };
+
+    document.getElementById("message").textContent ="";
+
+    updateMixer();
+}
+
+function addColor(c) {
+    if (gameState !== "playing") return;
+    paint[c] = Math.min(100, paint[c] + 20);
+    updateMixer();
+}
+
+function removeColor(c) {
+    if (gameState !== "playing") return;
+    paint[c] = Math.max(0, paint[c] - 20);
+    updateMixer();
+}
+
+function getMixedColor() {
+    return `rgb(${Math.round(paint.r * 2.55)},${Math.round(paint.g * 2.55)},${Math.round(paint.b * 2.55)})`;
+}
+
+function updateMixer() {
+    document.getElementById("redFill").style.width = paint.r + "%";
+    document.getElementById("greenFill").style.width = paint.g + "%";
+    document.getElementById("blueFill").style.width = paint.b + "%";
+ //   document.getElementById("colorPreview").style.background = getMixedColor();
+}
+
+function getProgress() {
+    return Math.max(0, Math.min(1,
+        (START_Y - balloon.y) / (START_Y - GOAL_Y)
+    ));
+}
+
+function getTargetColor() {
+    const p = getProgress();
+    const t = colorTimer;
+
+    return {
+        r: 50 + 50 * (0.5 + 0.5 * Math.sin(t * 0.8 + p)),
+        g: 50 + 50 * (0.5 + 0.5 * Math.sin(t * 0.7 + 2.1 + p)),
+        b: 50 + 50 * (0.5 + 0.5 * Math.sin(t * 0.9 + 4.2 + p))
+    };
+}
+
+function colorMatch() {
+    const target = getTargetColor();
+
+    const distance = Math.sqrt(
+        (paint.r - target.r) ** 2 +
+        (paint.g - target.g) ** 2 +
+        (paint.b - target.b) ** 2
+    );
+
+    const maxDistance = Math.sqrt(3 * 100 * 100);
+
+    return Math.max(0, 1 - distance / maxDistance);
+}
+
+function update(dt) {
+    if (gameState === "celebrating") {
+        celebrationTimer += dt;
+        sunProgress = Math.min(1, celebrationTimer / 5.5);
+
+        balloon.x += 105 * dt;
+        balloon.y -= 38 * dt;
+
+        if (celebrationTimer >= 5.5) {
+            gameState = "won";
+            document.getElementById("message").textContent =
+                "Bravo - Du hast den oberen Felsrand erreicht und genießt den Flug im Sonnenuntergang.";
+        }
+        return;
+    }
+
+    if (gameState !== "playing") return;
+
+    // 1. Farbkanone bewegen
+    if (keys.left) cannon.x -= cannon.speed * dt;
+    if (keys.right) cannon.x += cannon.speed * dt;
+
+    cannon.x = Math.max(150, Math.min(W - 150, cannon.x));
+
+    const progress = getProgress();
+
+    // 2. Kontinuierlicher, sanfter Farbwechsel (graduell, ohne harte Sprünge)
+    const colorSpeed = 0.12 + (progress * 0.18);
+    //colorTimer += dt * colorSpeed;
+
+    // 3. Wind
+    const maximumWind = 115;
+    windStrength = maximumWind * progress;
+
+    windTimer += dt;
+
+    if (windTimer >= 3.2) {
+        windTimer = 0;
+
+        const direction = Math.random() < 0.5 ? -1 : 1;
+
+        windTarget = direction *
+            windStrength *
+            (0.45 + Math.random() * 0.55);
+    }
+
+    if (progress <= 0.001) {
+        balloon.vx = 0;
+        windTarget = 0;
+    } else {
+        const windResponse = 1 - Math.exp(-dt * 1.1);
+        balloon.vx += (windTarget - balloon.vx) * windResponse;
+        balloon.x += balloon.vx * dt;
+    }
+
+    if (balloon.x < 165) {
+        balloon.x = 165;
+        balloon.vx = Math.max(0, balloon.vx) * 0.7;
+    }
+
+    if (balloon.x > W - 165) {
+        balloon.x = W - 165;
+        balloon.vx = Math.min(0, balloon.vx) * 0.7;
+    }
+
+    // 4. Farbverbrauch
+    const consumption = 0.35 * dt;
+
+    paint.r = Math.max(0, paint.r - consumption);
+    paint.g = Math.max(0, paint.g - consumption);
+    paint.b = Math.max(0, paint.b - consumption);
+
+    updateMixer();
+
+    // 5. Auftrieb
+    const horizontalDistance = Math.abs(balloon.x - cannon.x);
+    const alignment = Math.max(0, 1 - horizontalDistance / 120);
+    const match = colorMatch();
+    const amount = (paint.r + paint.g + paint.b) / 300;
+    
+    const effectiveMatch = Math.max(0, (match - 0.30) / 0.70);
+
+    const heat = effectiveMatch * alignment * amount;
+
+    const gravity = 10;
+    const maximumLift = 40;
+
+    const verticalAcceleration = gravity - heat * maximumLift;
+
+    balloon.vy += verticalAcceleration * dt;
+    balloon.vy *= Math.pow(0.985, dt * 60);
+    balloon.vy = Math.max(-65, Math.min(65, balloon.vy));
+
+    balloon.y += balloon.vy * dt;
+
+    if (balloon.y > START_Y) {
+        balloon.y = START_Y;
+        balloon.vy = 0;
+    }
+
+    if (balloon.y < 30) {
+        balloon.y = 30;
+        balloon.vy = 0;
+    }
+
+    // 6. Farbpartikel
+    if (Math.random() < 0.8) {
+        particles.push({
+            x: cannon.x + (Math.random() - 0.5) * 20,
+            y: cannon.y - 22,
+            vx: (Math.random() - 0.5) * 1.5,
+            vy: -2 - Math.random() * 2,
+            life: 1,
+            color: getMixedColor()
+        });
+    }
+
+    particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= dt * 0.75;
+    });
+
+    particles = particles.filter(p => p.life > 0);
+
+    // 7. Ziel erreicht
+    if (balloon.y <= GOAL_Y) {
+        gameState = "celebrating";
+        celebrationTimer = 0;
+        sunProgress = 0;
+
+        document.getElementById("message").textContent =
+            "Bravo - Du hast den oberen Felsrand erreicht und genießt den Flug im Sonnenuntergang.";
+    }
+}
+
+// Zeichnen-Funktionen
+function drawSky() {
+    const gradient = ctx.createLinearGradient(0, 0, 0, H);
+
+    if (gameState === "celebrating" || gameState === "won") {
+        const p = sunProgress;
+
+        gradient.addColorStop(0, mixColor("#4b75a3", "#28234f", p));
+        gradient.addColorStop(0.55, mixColor("#f2a06b", "#a83e59", p));
+        gradient.addColorStop(1, mixColor("#ffe0a0", "#ed795b", p));
+    } else {
+        gradient.addColorStop(0, "#4c9bd1");
+        gradient.addColorStop(1, "#bce9f3");
+    }
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, W, H);
+
+    if (gameState === "celebrating" || gameState === "won") {
+        const sunY = 115 + sunProgress * 300;
+
+        ctx.save();
+        ctx.shadowColor = "#ffbd78";
+        ctx.shadowBlur = 35;
+        ctx.fillStyle = "#ffdc91";
+
+        ctx.beginPath();
+        ctx.arc(710, sunY, 48, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.fillStyle = "rgba(255,220,160,0.25)";
+        for (let i = 0; i < 5; i++) {
+            ctx.fillRect(0, 365 + i * 22, W, 4);
+        }
+    }
+}
+
+function mixColor(a, b, p) {
+    const ca = hexToRgb(a);
+    const cb = hexToRgb(b);
+
+    const r = Math.round(ca.r + (cb.r - ca.r) * p);
+    const g = Math.round(ca.g + (cb.g - ca.g) * p);
+    const bl = Math.round(ca.b + (cb.b - ca.b) * p);
+
+    return `rgb(${r},${g},${bl})`;
+}
+
+function hexToRgb(hex) {
+    return {
+        r: parseInt(hex.slice(1, 3), 16),
+        g: parseInt(hex.slice(3, 5), 16),
+        b: parseInt(hex.slice(5, 7), 16)
+    };
+}
+
+function drawLandscape() {
+    const rockColor =
+        gameState === "celebrating" || gameState === "won"
+        ? mixColor("#59636a", "#25243b", sunProgress)
+        : "#59636a";
+
+    ctx.fillStyle = rockColor;
+
+    // Linker Felsen
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(125, 0);
+    ctx.lineTo(175, 90);
+    ctx.lineTo(135, 170);
+    ctx.lineTo(190, 270);
+    ctx.lineTo(130, 370);
+    ctx.lineTo(160, H);
+    ctx.lineTo(0, H);
+    ctx.closePath();
+    ctx.fill();
+
+    // Rechter Felsen
+    ctx.beginPath();
+    ctx.moveTo(W, 0);
+    ctx.lineTo(W - 125, 0);
+    ctx.lineTo(W - 175, 90);
+    ctx.lineTo(W - 135, 170);
+    ctx.lineTo(W - 190, 270);
+    ctx.lineTo(W - 130, 370);
+    ctx.lineTo(W - 160, H);
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle =
+        gameState === "celebrating" || gameState === "won"
+        ? "#bd8a69" : "#e9ca85";
+
+    ctx.fillRect(0, 475, W, 65);
+
+    ctx.fillStyle = "#2b9ebc";
+    ctx.fillRect(0, 510, W, 30);
+
+    ctx.fillStyle = "white";
+    ctx.font = "bold 17px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("", W / 2, 30);
+}
+
+function drawCannon() {
+    if (gameState !== "playing") return;
+
+    ctx.save();
+    ctx.translate(cannon.x, cannon.y);
+
+    ctx.fillStyle = "#283d4b";
+    ctx.fillRect(-20, -12, 40, 28);
+
+    ctx.fillStyle = "#657e8d";
+    ctx.fillRect(-12, -28, 24, 20);
+
+    ctx.fillStyle = "#172b3a";
+    ctx.beginPath();
+    ctx.arc(0, 17, 9, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function drawBalloon() {
+    const target = getTargetColor();
+
+    ctx.save();
+    ctx.translate(balloon.x, balloon.y);
+
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 27, 34, 0, 0, Math.PI * 2);
+
+    ctx.fillStyle =
+        `rgb(${Math.round(target.r * 2.55)},${Math.round(target.g * 2.55)},${Math.round(target.b * 2.55)})`;
+
+    ctx.fill();
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.strokeStyle = "#5c3d26";
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.moveTo(-14, 25);
+    ctx.lineTo(-7, 47);
+    ctx.moveTo(14, 25);
+    ctx.lineTo(7, 47);
+    ctx.stroke();
+
+    ctx.fillStyle = "#8a542c";
+    ctx.fillRect(-10, 46, 20, 15);
+
+    ctx.restore();
+}
+
+function drawParticles() {
+    particles.forEach(p => {
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    ctx.globalAlpha = 1;
+}
+
+function drawStatus() {
+    const progress = getProgress();
+
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(15, 15, 190, 52);
+
+    ctx.fillStyle = "white";
+    ctx.font = "bold 15px Arial";
+    ctx.textAlign = "left";
+    ctx.fillText("Höhe: " + Math.round(progress * 100) + "%", 27, 37);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(27, 46, 160, 9);
+
+    ctx.fillStyle = "#38d27b";
+    ctx.fillRect(27, 46, 160 * progress, 9);
+}
+
+function draw() {
+    drawSky();
+    drawLandscape();
+    drawParticles();
+    drawCannon();
+    drawBalloon();
+
+    if (gameState === "playing") {
+        drawStatus();
+    }
+
+    if (gameState === "won") {
+        ctx.fillStyle = "rgba(20,20,40,0.35)";
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.fillStyle = "white";
+        ctx.textAlign = "center";
+        ctx.font = "bold 42px Arial";
+        ctx.fillText("Der Ballon landet sicher am Boden.", W / 2, H / 2);
+
+        ctx.font = "22px Arial";
+        ctx.fillText(
+            "Der Landeplatz ist mit D-2 markiert.",
+            W / 2,
+            H / 2 + 42
+        );
+    }
+}
+
+function loop(now) {
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+
+    update(dt);
+    draw();
+
+    requestAnimationFrame(loop);
+}
+
+// Tastatursteuerung
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") {
+        keys.left = true;
+        e.preventDefault();
+    }
+
+    if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") {
+        keys.right = true;
+        e.preventDefault();
+    }
+});
+
+document.addEventListener("keyup", e => {
+    if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") {
+        keys.left = false;
+    }
+
+    if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") {
+        keys.right = false;
+    }
+});
+
+// Touch- und Maustasten
+function setupMoveButton(id, direction) {
+    const button = document.getElementById(id);
+
+    button.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        keys[direction] = true;
+        button.setPointerCapture(e.pointerId);
+    });
+
+    button.addEventListener("pointerup", () => {
+        keys[direction] = false;
+    });
+
+    button.addEventListener("pointercancel", () => {
+        keys[direction] = false;
+    });
+
+    button.addEventListener("lostpointercapture", () => {
+        keys[direction] = false;
+    });
+}
+
+setupMoveButton("leftBtn", "left");
+setupMoveButton("rightBtn", "right");
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
