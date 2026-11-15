@@ -131,6 +131,44 @@ h1 { font-size: clamp(22px, 5vw, 32px); }
     font-weight: bold;
 }
 
+.easter-egg {
+    max-width: 520px;
+    margin: 12px auto;
+    padding: 14px;
+    background: #354f63;
+    border: 2px solid #e5a83c;
+    border-radius: 12px;
+    text-align: left;
+}
+
+.easter-egg[hidden] { display: none; }
+
+.easter-egg-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.easter-egg-close {
+    border: 0;
+    border-radius: 6px;
+    padding: 5px 9px;
+    cursor: pointer;
+}
+
+.easter-egg input[type="range"] {
+    width: 100%;
+    margin: 10px 0;
+    accent-color: #e5a83c;
+}
+
+.easter-egg-value {
+    font-weight: bold;
+    color: #ffd27b;
+}
+
 .instructions {
     max-width: 900px;
     margin: 10px auto;
@@ -156,6 +194,22 @@ h1 { font-size: clamp(22px, 5vw, 32px); }
 </div>
 
 <canvas id="game" width="900" height="540"></canvas>
+
+<div class="easter-egg" id="easterEgg" hidden>
+    <div class="easter-egg-header">
+        <button class="easter-egg-close" id="closeEasterEgg" type="button"
+                aria-label="Einstellung schließen">✕</button>
+    </div>
+    <label for="minMatchSlider">
+        Mindest-Farbübereinstimmung:
+        <span class="easter-egg-value" id="minMatchValue">75%</span>
+    </label>
+    <input id="minMatchSlider" type="range" min="50" max="90" step="1" value="75">
+    <div style="display:flex; justify-content:space-between; font-size:12px; color:#dceaf0;">
+        <span>50% – leichter</span>
+        <span>90% – schwieriger</span>
+    </div>
+</div>
 
 <div class="panel">
     <div class="mixer">
@@ -204,6 +258,10 @@ const GOAL_Y = 75;
 
 let paint, balloon, cannon;
 let gameState = "playing";
+
+// Easter-Egg: Mindest-Farbübereinstimmung (30% bis 100%)
+let min_match = 0.75;
+let skyClickCount = 0;
 
 let colorTimer = 0;
 
@@ -334,8 +392,8 @@ function update(dt) {
     const progress = getProgress();
 
     // 2. Kontinuierlicher, sanfter Farbwechsel (graduell, ohne harte Sprünge)
-    const colorSpeed = 0.12 + (progress * 0.18);
-    //colorTimer += dt * colorSpeed;
+    const colorSpeed = 0.12 + (progress * 0.35);
+    colorTimer += dt * colorSpeed; // comment this line to make it easy for testing purposes
 
     // 3. Wind
     const maximumWind = 115;
@@ -387,7 +445,7 @@ function update(dt) {
     const match = colorMatch();
     const amount = (paint.r + paint.g + paint.b) / 300;
     
-    const effectiveMatch = Math.max(0, (match - 0.30) / 0.70);
+    const effectiveMatch = Math.max(0, (match - min_match) / (1-min_match));
 
     const heat = effectiveMatch * alignment * amount;
 
@@ -625,6 +683,7 @@ function drawStatus() {
     ctx.fillStyle = "white";
     ctx.font = "bold 15px Arial";
     ctx.textAlign = "left";
+//    ctx.fillText("Höhe: " + Math.round(progress * 100) + "% "+Math.round(colorMatch()*100)+" "+min_match, 27, 37); // for testing of actual color match and min_match required
     ctx.fillText("Höhe: " + Math.round(progress * 100) + "%", 27, 37);
 
     ctx.fillStyle = "#ffffff";
@@ -672,6 +731,37 @@ function loop(now) {
 
     requestAnimationFrame(loop);
 }
+
+// Easter-Egg: Nach 10 Klicks auf den sichtbaren Himmel erscheint der Regler.
+const easterEgg = document.getElementById("easterEgg");
+const minMatchSlider = document.getElementById("minMatchSlider");
+const minMatchValue = document.getElementById("minMatchValue");
+
+canvas.addEventListener("click", e => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = W / rect.width;
+    const scaleY = H / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    // Nur der freie Himmelsbereich zwischen den Felsen zählt.
+    if (y >= 0 && y < 470 && x > 190 && x < W - 190) {
+        skyClickCount++;
+
+        if (skyClickCount >= 10) {
+            easterEgg.hidden = false;
+        }
+    }
+});
+
+minMatchSlider.addEventListener("input", () => {
+    min_match = Number(minMatchSlider.value) / 100;
+    minMatchValue.textContent = minMatchSlider.value + "%";
+});
+
+document.getElementById("closeEasterEgg").addEventListener("click", () => {
+    easterEgg.hidden = true;
+});
 
 // Tastatursteuerung
 document.addEventListener("keydown", e => {
