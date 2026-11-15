@@ -313,13 +313,13 @@ function resetGame() {
 
 function addColor(c) {
     if (gameState !== "playing") return;
-    paint[c] = Math.min(100, paint[c] + 20);
+    paint[c] = Math.min(100, paint[c] + 5);
     updateMixer();
 }
 
 function removeColor(c) {
     if (gameState !== "playing") return;
-    paint[c] = Math.max(0, paint[c] - 20);
+    paint[c] = Math.max(0, paint[c] - 5);
     updateMixer();
 }
 
