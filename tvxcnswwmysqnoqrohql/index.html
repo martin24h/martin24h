@@ -1,0 +1,765 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>17. Dezember</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #123c32, #24634b);
+    color: white;
+    text-align: center;
+    min-height: 100vh;
+}
+
+#game {
+    max-width: 1000px;
+    margin: auto;
+}
+
+h1 {
+    font-size: clamp(26px, 5vw, 40px);
+    margin-bottom: 15px;
+}
+
+#info {
+    font-size: 22px;
+    margin: 20px 0;
+}
+
+#message {
+    font-size: 19px;
+    min-height: 35px;
+    margin: 15px;
+    font-weight: bold;
+}
+
+#progress {
+    font-size: 17px;
+    color: #f6df9d;
+    margin: 10px;
+}
+
+/* Angezeigtes Suchbild */
+
+#question {
+    margin: 20px auto;
+    min-height: 155px;
+}
+
+#question img {
+    width: 125px;
+    height: 125px;
+    object-fit: contain;
+    background: white;
+    border: 4px solid white;
+    border-radius: 15px;
+}
+
+#question p {
+    font-size: 20px;
+    margin: 8px;
+}
+
+/* Hütchenbereich */
+
+#hats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(105px, 140px));
+    justify-content: center;
+    gap: 20px;
+    margin: 30px auto;
+    max-width: 850px;
+}
+
+/* Einzelnes Hütchen */
+
+.hat {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    border: 3px solid white;
+    border-radius: 15px;
+    background: white;
+    cursor: pointer;
+    overflow: hidden;
+    will-change: transform;
+}
+
+.hat img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+/* Hütchen-Abdeckung */
+
+.hat-cover {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(145deg, #e5b75f, #86521c);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(45px, 7vw, 75px);
+    z-index: 2;
+}
+
+.hat.solved .hat-cover {
+    display: none;
+}
+
+.hat.solved {
+    border-color: #65ed83;
+    cursor: default;
+}
+
+.hat.wrong {
+    border-color: #ff6969;
+    animation: shake 0.3s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-7px); }
+    75% { transform: translateX(7px); }
+}
+
+/* Buttons */
+
+.game-button {
+    padding: 15px 30px;
+    font-size: 19px;
+    font-weight: bold;
+    color: white;
+    background: #d39b35;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    margin: 15px;
+}
+
+.game-button:hover {
+    background: #b77e20;
+}
+
+.game-button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+#readyButton {
+    background: #d39b35;
+}
+
+#startButton {
+    background: #d39b35;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+@media (max-width: 500px) {
+    body {
+        padding: 10px;
+    }
+
+    #hats {
+        grid-template-columns: repeat(2, minmax(100px, 130px));
+        gap: 12px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">Siebzehnter Dezember ... der Bus hält vor dem Eingang zum Disneyland, Du steigst aus und reihst Dich in die Schlange vor dem Ticket-Schalter ein. 
+	Endlich bist Du am Schalter, möchtest Deine Karte bezahlen, aber das funktioniert hier offenbar anders als gewohnt, aber sieht auf den ersten Blick
+	einfach aus ... 
+
+
+    <div id="info">
+       <!-- Bereit für eine Herausforderung? -->
+    </div>
+
+    <div id="progress"></div>
+
+    <div id="message">
+   <!--     Kannst du dir merken, wo sich die Bilder verstecken? -->
+    </div>
+
+    <div id="question"></div>
+
+    <div id="hats"></div>
+
+    <button id="startButton" class="game-button"
+            onclick="startGame()">
+        ein Ticket bitte
+    </button>
+
+    <button id="readyButton" class="game-button"
+            onclick="startShuffling()" hidden>
+        Oh - und jetzt?
+    </button>
+
+</div>
+
+
+<script>
+
+// ============================================
+// 1. SPIELEINSTELLUNGEN
+// ============================================
+
+// Hier deine eigenen Bilder eintragen.
+// Maximal 10 Bilder werden verwendet.
+// Die Reihenfolge bestimmt die Reihenfolge der Runden.
+
+const images = [
+    {
+        src: "bilder/Simba.png"
+    },
+    {
+        src: "bilder/Ariel.webp"
+    } /*,
+    {
+        src: "bilder/Flash.webp"
+    },
+    {
+        src: "bilder/Scrat.webp"
+    },
+    {
+        src: "bilder/Nemo.jpg"
+    } */
+];
+
+
+// Anzahl der Vertauschungen pro Runde
+const SHUFFLES_PER_IMAGE = 0;
+
+// Dauer einer Sprungbewegung in Millisekunden
+const SHUFFLE_DURATION = 650;
+
+// Höhe des Halbkreisbogens
+// Größerer Wert = höherer Sprung
+const ARC_HEIGHT = 100;
+
+
+// ============================================
+// 2. SPIELVARIABLEN
+// ============================================
+
+const MAX_IMAGES = 10;
+const TOTAL_IMAGES = Math.min(images.length, MAX_IMAGES);
+
+let currentRound = 2;
+let hats = [];
+let questionOrder = [];
+let currentQuestion = 0;
+let phase = "idle";
+
+
+// ============================================
+// 3. HILFSFUNKTIONEN
+// ============================================
+
+function shuffleArray(array) {
+
+    const result = [...array];
+
+    for (let i = result.length - 1; i > 0; i--) {
+
+        const j = Math.floor(Math.random() * (i + 1));
+
+        [result[i], result[j]] =
+        [result[j], result[i]];
+    }
+
+    return result;
+}
+
+
+function wait(ms) {
+
+    return new Promise(resolve =>
+        setTimeout(resolve, ms)
+    );
+}
+
+
+// ============================================
+// 4. SPIEL STARTEN
+// ============================================
+
+function startGame() {
+
+    if (phase !== "idle" && phase !== "finished") return;
+
+    if (TOTAL_IMAGES < 2) {
+        document.getElementById("message").innerText =
+            "Bitte mindestens zwei Bilder definieren.";
+        return;
+    }
+
+    currentRound = 2;
+
+    document.getElementById("startButton").hidden = true;
+
+    beginRound();
+}
+
+
+// ============================================
+// 5. NEUE RUNDE VORBEREITEN
+// ============================================
+
+function beginRound() {
+
+    if (currentRound > TOTAL_IMAGES) {
+        finishGame();
+        return;
+    }
+
+    phase = "preview";
+
+  //  document.getElementById("info").innerText =
+ //        "Runde " + (currentRound - 1);
+
+    document.getElementById("message").innerText = "";
+//        "Merke dir die Bilder und ihre Positionen!";
+
+/*    document.getElementById("progress").innerText =
+        currentRound + " Bilder und Hütchen"; */
+
+    document.getElementById("question").innerHTML = "";
+
+    document.getElementById("readyButton").hidden = false;
+    document.getElementById("readyButton").disabled = false;
+
+    const container = document.getElementById("hats");
+
+    container.innerHTML = "";
+
+    hats = [];
+
+    // Bilder zufällig auf die Hütchen verteilen
+
+    const roundImages = shuffleArray(
+        Array.from(
+            { length: currentRound },
+            (_, index) => index
+        )
+    );
+
+    roundImages.forEach(imageIndex => {
+
+        const hat = document.createElement("button");
+
+        hat.className = "hat";
+        hat.type = "button";
+
+        hat.dataset.image = imageIndex;
+
+        // Bild ist zunächst vollständig sichtbar
+
+        const img = document.createElement("img");
+
+        img.src = images[imageIndex].src;
+        img.alt = images[imageIndex].name;
+
+        hat.appendChild(img);
+
+        // Noch KEINE Hütchen-Abdeckung!
+        // Diese kommt erst nach Klick auf den Bereit-Button.
+
+        hat.addEventListener("click", () => {
+            checkAnswer(hat);
+        });
+
+        container.appendChild(hat);
+
+        hats.push(hat);
+    });
+}
+
+
+// ============================================
+// 6. MISCHEN STARTEN
+// ============================================
+
+async function startShuffling() {
+
+    if (phase !== "preview") return;
+
+    phase = "shuffling";
+
+    const readyButton = document.getElementById("readyButton");
+
+    readyButton.disabled = true;
+    readyButton.hidden = true;
+
+    document.getElementById("message").innerText = "";
+        // "Die Bilder verschwinden unter den Hütchen!";
+
+    // Hütchen über die Bilder legen
+
+    hats.forEach(hat => {
+
+        const cover = document.createElement("div");
+
+        cover.className = "hat-cover";
+        cover.textContent = "🎩";
+
+        hat.appendChild(cover);
+    });
+
+    await wait(700);
+
+    document.getElementById("message").innerText = "";
+//        "Achtung! Jetzt wird gemischt!";
+
+    await wait(400);
+
+    // Hütchen mehrfach paarweise vertauschen
+
+	const shuffleCount = hats.length * SHUFFLES_PER_IMAGE;
+
+	for (let i = 0; i < shuffleCount; i++) {
+		await shuffleHatsInArc();
+        await wait(180);
+    }
+
+    // Zufällige Reihenfolge der Bildabfragen
+
+    questionOrder = shuffleArray(
+        Array.from(
+            { length: currentRound },
+            (_, index) => index
+        )
+    );
+
+    currentQuestion = 0;
+
+    phase = "asking";
+
+    askNextQuestion();
+}
+
+
+// ============================================
+// 7. HÜTCHEN IN EINEM HALBKREIS TAUSCHEN
+// ============================================
+
+async function shuffleHatsInArc() {
+
+    if (hats.length < 2) return;
+
+    // Zwei unterschiedliche Hütchen auswählen
+
+    const firstIndex = Math.floor(
+        Math.random() * hats.length
+    );
+
+    let secondIndex;
+
+    do {
+        secondIndex = Math.floor(
+            Math.random() * hats.length
+        );
+    } while (secondIndex === firstIndex);
+
+    const hatA = hats[firstIndex];
+    const hatB = hats[secondIndex];
+
+    // Ausgangspositionen ermitteln
+
+    const rectA = hatA.getBoundingClientRect();
+    const rectB = hatB.getBoundingClientRect();
+
+    const dx = rectB.left - rectA.left;
+    const dy = rectB.top - rectA.top;
+
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance === 0) return;
+
+    // Senkrechter Vektor für den Halbkreisbogen
+
+    const perpX = -dy / distance;
+    const perpY = dx / distance;
+
+    const arc = Math.min(
+        ARC_HEIGHT,
+        distance * 0.4
+    );
+
+    // Mittelpunkt der Bewegung für Hütchen A
+
+    const midAX = dx / 2 + perpX * arc;
+    const midAY = dy / 2 + perpY * arc;
+
+    // Mittelpunkt der Bewegung für Hütchen B
+    // Die beiden Hütchen springen auf gegenüberliegenden Seiten.
+
+    const midBX = -dx / 2 - perpX * arc;
+    const midBY = -dy / 2 - perpY * arc;
+
+    // Animation für Hütchen A
+
+    const animationA = hatA.animate(
+        [
+            {
+                transform: "translate(0px, 0px)",
+                offset: 0
+            },
+            {
+                transform: `translate(${midAX}px, ${midAY}px)`,
+                offset: 0.5
+            },
+            {
+                transform: `translate(${dx}px, ${dy}px)`,
+                offset: 1
+            }
+        ],
+        {
+            duration: SHUFFLE_DURATION,
+            easing: "ease-in-out",
+            fill: "none"
+        }
+    );
+
+    // Animation für Hütchen B
+
+    const animationB = hatB.animate(
+        [
+            {
+                transform: "translate(0px, 0px)",
+                offset: 0
+            },
+            {
+                transform: `translate(${midBX}px, ${midBY}px)`,
+                offset: 0.5
+            },
+            {
+                transform: `translate(${-dx}px, ${-dy}px)`,
+                offset: 1
+            }
+        ],
+        {
+            duration: SHUFFLE_DURATION,
+            easing: "ease-in-out",
+            fill: "none"
+        }
+    );
+
+    // Warten, bis beide Animationen beendet sind
+
+    await Promise.all([
+        animationA.finished,
+        animationB.finished
+    ]);
+
+    // Tatsächliche Positionen im Array tauschen
+
+    [hats[firstIndex], hats[secondIndex]] =
+    [hats[secondIndex], hats[firstIndex]];
+
+    // Neue Reihenfolge im HTML übernehmen
+
+    const container = document.getElementById("hats");
+
+    hats.forEach(hat => {
+        container.appendChild(hat);
+    });
+}
+
+
+// ============================================
+// 8. NÄCHSTES BILD ABFRAGEN
+// ============================================
+
+async function askNextQuestion() {
+
+    if (currentQuestion >= questionOrder.length) {
+        currentRound++;
+		
+	    if (currentRound > TOTAL_IMAGES) {
+			finishGame();
+			return;
+		}
+
+        phase = "betweenRounds";
+
+        document.getElementById("message").innerText =
+            "Alles richtig - aber für einen echten Disney-Fan noch nicht genug ...";
+
+        document.getElementById("question").innerHTML = "";
+
+        await wait(2500);
+
+        beginRound();
+
+        return;
+    }
+
+    const imageIndex = questionOrder[currentQuestion];
+
+    const image = images[imageIndex];
+
+    const question = document.getElementById("question");
+
+    question.innerHTML = "";
+
+   const text = document.createElement("p");
+
+    text.innerText =
+        "Wo versteckt sich ...";
+		
+    const img = document.createElement("img");
+
+    img.src = image.src;
+//    img.alt = image.name;
+
+    question.appendChild(text);
+    question.appendChild(img);
+
+    document.getElementById("message").innerText = "";
+        //"Finde das richtige Hütchen!";
+
+ //   document.getElementById("progress").innerText =
+ //       "Bild " + (currentQuestion + 1) +
+//        " von " + currentRound;
+}
+
+
+// ============================================
+// 9. ANTWORT ÜBERPRÜFEN
+// ============================================
+
+async function checkAnswer(selectedHat) {
+
+    if (phase !== "asking") return;
+
+    if (selectedHat.classList.contains("solved")) return;
+
+    const correctImageIndex =
+        questionOrder[currentQuestion];
+
+    const selectedImageIndex =
+        Number(selectedHat.dataset.image);
+
+    // Richtige Antwort
+
+    if (selectedImageIndex === correctImageIndex) {
+
+        phase = "feedback";
+
+        selectedHat.classList.add("correct");
+        selectedHat.classList.add("solved");
+
+        selectedHat.disabled = true;
+
+        document.getElementById("message").innerText =
+            "✅ Bravo - das ist korrekt!";
+
+        currentQuestion++;
+
+        await wait(2000);
+
+        phase = "asking";
+
+        await askNextQuestion();
+
+	} else {
+
+		phase = "failed";
+
+		selectedHat.classList.add("wrong");
+
+		document.getElementById("message").innerText =
+			"❌ Verdammt - das war falsch und Du landest wieder ganz hinten in der Schlange.";
+
+		await wait(2000);
+
+		// Spiel vollständig zurücksetzen
+
+		currentRound = 2;
+		currentQuestion = 0;
+		hats = [];
+		questionOrder = [];
+
+/*		document.getElementById("question").innerHTML = "";
+		document.getElementById("hats").innerHTML = "";
+
+		document.getElementById("progress").innerText = "";
+
+		document.getElementById("info").innerText = 
+			"Neuer Versuch!";
+
+
+		document.getElementById("message").innerText =
+			"Wir beginnen wieder mit zwei Bildern.";
+*/
+//		await wait(1000);
+
+		beginRound();
+	}	
+}
+
+
+// ============================================
+// 10. SPIEL BEENDET
+// ============================================
+
+function finishGame() {
+
+    phase = "finished";
+
+ //   document.getElementById("info").innerText =
+ //       "🏆 Herzlichen Glückwunsch!";
+
+    document.getElementById("message").innerText =
+        "🎉 Du bist wirklich ein echter Disney-Fan! Viel Spaß bei Deinem Besuch und achte gut auf Deinen Ticket-Code!";
+
+ //   document.getElementById("progress").innerText =
+ //       "Alle " + TOTAL_IMAGES + " Bilder gefunden!";
+
+    document.getElementById("question").innerHTML = "";
+
+    document.getElementById("hats").innerHTML = "";
+
+   // Disneyland-Bild anzeigen
+    const disneyImage = document.createElement("img");
+    disneyImage.src = "bilder/finish.jpg";
+    disneyImage.style.width = "100%";
+    disneyImage.style.maxWidth = "600px";
+    disneyImage.style.height = "auto";
+    disneyImage.style.display = "block";
+    disneyImage.style.margin = "20px auto";
+    document.getElementById("question").appendChild(disneyImage);
+	
+ /*   const startButton = document.getElementById("startButton");
+
+    startButton.innerText = "Noch einmal spielen";
+    startButton.hidden = false; */
+
+    document.getElementById("readyButton").hidden = true;
+}
+
+</script>
+
+</body>
+</html>
