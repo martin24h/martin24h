@@ -11,15 +11,28 @@
     font-family:system-ui,-apple-system,Segoe UI,sans-serif; color:#fff;
     background:radial-gradient(ellipse at 50% 0%,#285c82 0,#102d4c 48%,#09182c 100%); }
   .game { width:min(100%,1000px); }
-  header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px }
+  header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:10px }
   h1 { margin:0; color:var(--gold); font-size:clamp(1.35rem,3vw,2rem); text-shadow:0 2px 12px #0008 }
   .stats { display:flex; gap:9px; flex-wrap:wrap }
   .pill { background:#ffffff16; border:1px solid #ffffff30; border-radius:999px; padding:8px 13px; font-weight:700; backdrop-filter:blur(4px); }
+  .status-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; flex-wrap: wrap; }
+  .message { min-height: 1.5em; margin: 0; color: var(--gold); font-weight: 700; flex: 1 1 260px; text-align: left; }
+  .progress-wrap { display:flex; flex-direction:column; align-items:flex-start; gap:5px; margin-bottom:0; width:min(100%, 340px); flex: 0 0 auto; }
+  .progress-label { font-size:.88rem; font-weight:700; color:var(--ice); }
+  .progress-track { width:100%; height:14px; border-radius:999px; background:#09182c99; border:1px solid #d4f4ff66; overflow:hidden; box-shadow:inset 0 2px 6px #0007; }
+  .progress-fill { height:100%; width:0%; border-radius:999px; background:linear-gradient(90deg, #ffd66b, #fff0a8); transition:width 0.18s ease-out; }
+  .stage { position: relative; width: 100%; }
   canvas { width:100%; display:block; aspect-ratio: 16 / 9; border:2px solid #d4f4ff80; border-radius:18px;
     background:#0b1d33; box-shadow:0 16px 50px #0008; }
+  .win-overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+    border-radius: 18px; z-index: 5; box-shadow: 0 12px 36px #0009; }
   .under { display:grid; grid-template-columns:1fr auto; gap:16px; align-items:center; margin-top:14px }
-  .controls { display:flex; gap:10px; flex-wrap:wrap }
+  .controls { display:flex; flex-direction:column; gap:10px; width:100% }
+  .controls-top { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap }
+  .dir-group { display:flex; gap:10px }
+  .controls-bottom { display:flex; gap:10px; flex-wrap:wrap; justify-content:center }
   button { border:0; border-radius:13px; padding:12px 20px; font-size:1rem; font-weight:800; cursor:pointer;
+    touch-action:manipulation;
     color:#16314a; background:var(--primary); box-shadow:0 4px 0 #a86b20; transition: transform 0.1s ease; }
   button.secondary { background:linear-gradient(135deg, #d8f7ff, #7ed5f4); box-shadow:0 4px 0 #327f9a; color:#102d4c; }
   button.action-jump { background:linear-gradient(135deg, #ffd1dc, #ff8fa3); box-shadow:0 4px 0 #9e2a3b; color:#4a1015; }
@@ -31,66 +44,122 @@
   .uploadrow { display:flex; gap:16px; flex-wrap:wrap; align-items:center }
   label { font-size:.9rem; color:#e6f6ff }
   input { display:block; max-width:230px; margin-top:4px; font-size:.82rem }
-  .message { min-height:1.5em; margin:10px 2px 0; color:var(--gold); font-weight:700 }
-  @media(max-width:750px) { .under { grid-template-columns:1fr } .controls { justify-content:center } }
+  @media(max-width:750px) {
+    .status-row { flex-direction: column; align-items: stretch; gap: 8px; }
+    .progress-wrap { width: 100%; }
+    .under { grid-template-columns:1fr }
+    button { padding:13px 16px; }
+  }
 </style>
 </head>
 <body>
 <main class="game">
   <header>
-    <h1>🎢 Winter-Achterbahn</h1>
+    Achtzehnter Dezember ... endlich hast Du die Eintrittshürde geschafft und fröhlich blickst Du Dich um, was dieses Disneyland denn so zu bieten hat.
+    Beim Eintritt hast Du auch eine Stempelkarte erhalten - offenbar musst Du einiges hier verpflichtend besuchen, bevor sich die Tore zum Schloss
+    öffnen. Also womit fängst Du an? Wie wäre es mit ein wenig Action und einer Schlittenfahrt mit Deinen Disney-Freunden? Aber Vorsicht vor allem,
+    was rechtlich nicht zu Disney gehört ...
     <div class="stats">
-      <div class="pill">⭐ Gesammelt: <span id="score">0</span>/20</div>
-      <div class="pill">🏁 Strecke: <span id="distance">0</span> m</div>
+<!--      <div class="pill">⭐ Gesammelt: <span id="score">0</span>/20</div> -->
+<!--      <div class="pill">🏁 Strecke: <span id="distance">0</span> m</div> -->
     </div>
   </header>
-  <canvas id="game" width="960" height="540" aria-label="Achterbahn-Spiel"></canvas>
+  <div class="status-row">
+    <div class="progress-wrap" aria-label="Fortschritt der gesammelten guten Treffer">
+      <div class="progress-label">Disney-Freunde im Schlitten <span id="progressText">0 / 19</span></div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressBar"></div>
+      </div>
+    </div>
+    <div class="message" id="message">Bereit? Klicke auf „Los geht's“, um die Fahrt zu starten!</div>
+  </div>
+  <div class="stage">
+    <canvas id="game" width="960" height="540" aria-label="Achterbahn-Spiel"></canvas>
+    <img id="winOverlay" src="Finish.png" alt="Geschafft! Dein Schlitten ist voll!" class="win-overlay" hidden>
+  </div>
   <div class="under">
     <div class="controls">
-      <button id="startBtn">Los geht's</button>
-      <button id="up" class="secondary" disabled>⬆ Hinauf</button>
-      <button id="down" disabled>⬇ Hinunter</button>
-      <button id="jumpBtn" class="action-jump" disabled>🦘 Sprung</button>
-      <button id="restart" class="secondary">↻ Neustart</button>
+      <div class="controls-top">
+        <button id="jumpBtn" class="action-jump" disabled>🦘 Sprung</button>
+        <div class="dir-group">
+          <button id="up" class="secondary" disabled>⬆ Hinauf</button>
+          <button id="down" disabled>⬇ Hinunter</button>
+        </div>
+      </div>
+      <div class="controls-bottom">
+        <button id="startBtn">Los geht's</button>
+        <!-- <button id="restart" class="secondary">↻ Neustart</button> -->
+      </div>
     </div>
-    <div class="hint">Fantasievoller, detailreicher Winterhimmel mit Parallax-Tannenwäldern!<br>
-      Kleine Lücken per Sprung-Button meistern, große Abgründe umfahren.</div>
   </div>
-  <div class="uploads">
+<!--  <div class="uploads">
     <strong>Eigene JPG-Bilder verwenden (optional)</strong>
     <div class="uploadrow">
       <label>Eigener Schlitten/Figur (JPG)<input id="playerFile" type="file" accept="image/jpeg,image/jpg"></label>
       <label>Gute Bilder (Geschenke)<input id="goodFiles" type="file" accept="image/jpeg,image/jpg" multiple></label>
       <label>Böse Bilder (Hindernisse)<input id="badFiles" type="file" accept="image/jpeg,image/jpg" multiple></label>
     </div>
-  </div>
-  <div class="message" id="message">Bereit? Klicke auf „Los geht's“, um die Fahrt zu starten!</div>
+  </div>  -->
 </main>
 <script>
 (() => {
   const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height, scoreEl = document.getElementById('score'),
-    distEl = document.getElementById('distance'), msg = document.getElementById('message');
-  const startBtn = document.getElementById('startBtn'), upBtn = document.getElementById('up'), 
+  const W = canvas.width, H = canvas.height, /* scoreEl = document.getElementById('score') , */
+    /* distEl = document.getElementById('distance'), */ msg = document.getElementById('message'),
+    progressBar = document.getElementById('progressBar'), progressText = document.getElementById('progressText'),
+    winOverlay = document.getElementById('winOverlay');
+  const startBtn = document.getElementById('startBtn'), upBtn = document.getElementById('up'),
         downBtn = document.getElementById('down'), jumpBtn = document.getElementById('jumpBtn');
-  let goodImages = [], badImages = [];
-  let customPlayerImg = null;
+  let  badImages = [];
+  const defaultPlayerImg = new Image();
+  defaultPlayerImg.src = 'TN3.png'; // Pfad oder Dateiname anpassen
+  let customPlayerImg = defaultPlayerImg;
+	function createImages(paths) {
+	  return paths.map(src => {
+		const im = new Image();
+		im.onerror = () => console.warn('Bild konnte nicht geladen werden:', src);
+		im.src = src;
+		return im;
+	  });
+	}
+
+	let goodImages = createImages([
+	  'good/toy.jpg',
+	  'good/Tron.jpg',
+	  'good/Nala.jpg',
+	  'good/Fabius.jpg',
+	  'good/Sebastian.jpg',
+	  'good/Pocahontas.jpg',
+	  'good/obiwan.jpg',
+	  'good/Yoda.jpg',
+	  'good/Wookie.jpg',
+	  'good/Manny.jpg',
+	  'good/Sid.jpg',
+	  'good/Pumba.jpg',
+	  'good/Timon.jpg',
+	  'good/Dorie.jpg',
+	  'good/Flash.webp',
+	  'good/Ariel.webp',
+	  'good/Scrat.webp',
+	  'good/Nemo.jpg',
+	  'good/Simba.png'
+	]);
 
   function loadFiles(input, target) {
     target.length = 0;
     [...input.files].forEach(file => { const url = URL.createObjectURL(file), im = new Image(); im.src = url; target.push(im); });
   }
-  document.getElementById('goodFiles').addEventListener('change', e => loadFiles(e.target, goodImages));
-  document.getElementById('badFiles').addEventListener('change', e => loadFiles(e.target, badImages));
+/*  document.getElementById('goodFiles').addEventListener('change', e => loadFiles(e.target, goodImages));
+  document.getElementById('badFiles').addEventListener('change', e => loadFiles(e.target, badImages)); */
 
-  document.getElementById('playerFile').addEventListener('change', e => {
+/*  document.getElementById('playerFile').addEventListener('change', e => {
     const file = e.target.files[0];
     if (file) {
       const url = URL.createObjectURL(file), im = new Image();
       im.src = url;
       customPlayerImg = im;
     }
-  });
+  }); */
 
   const positions = [
     { rail: 0, isHanging: true,  label: 'Untere Schiene · unten hängend' },
@@ -99,16 +168,40 @@
     { rail: 1, isHanging: false, label: 'Obere Schiene · oben fahrend' }
   ];
 
+  const gapConfig = {
+    cycleLength: 1002700, // vorher 2200: größer = Lücken kommen seltener (mehr Strecke dazwischen)
+    gapScale: 1,    // < 1.0 macht die Lücken selbst etwas schmaler; 0 = gar keine Lücken
+    shortStart: 1300,
+    shortEnd: 1380,
+    longStart: 1950,
+    longEnd: 2060,
+    railOffset: 500
+  };
+
   let playerPos = 1;
-  let score = 0, distance = 0, objects = [], frame = 0, running = false, won = false;
+  let score = 0, distance = 0, speedDistance = 0, objects = [], frame = 0, spawnTimer = 0, running = false, won = false;
   let fallingState = null;
   let jumpState = null;
-  let activeGapJump = false; 
+  let activeGapJump = false;
   const player = { x: 210 };
   let seedOffset = Math.random() * 10000;
+  let lastTime = performance.now();
+  let hitSlowdown = 0; // z. B. 0.35 -> bremst nach Treffer kurzzeitig zusätzlich ab
+  let Ziel = 1;
+
+  function updateScoreUI() {
+/*    scoreEl.textContent = score; */
+    progressText.textContent = `${score} / ${Ziel}`;
+    progressBar.style.width = `${Math.max(0, Math.min(100, (score / Ziel) * 100))}%`;
+  }
 
   function getSpeed() {
-    return Math.min(8.5, 5.0 + (distance / 2000));
+    const baseSpeed = Math.min(14, 5.0 + (speedDistance / 1000));
+    const p = positions[playerPos];
+    const slope = trackSlope(player.x, p.rail);
+    const slopeFactor = Math.max(-0.45, Math.min(0.65, slope * 0.55));
+    const slowdownFactor = Math.max(0.4, 1 - hitSlowdown);
+    return Math.max(3.0, Math.min(16.0, baseSpeed * (1 + slopeFactor) * slowdownFactor));
   }
 
   function trackY(x, rail) {
@@ -128,9 +221,20 @@
   }
 
   function getRailGapType(worldX, rail) {
-    const mod = (worldX + seedOffset + (rail * 400)) % 2200;
-    if (mod > 1300 && mod < 1380) return 'short';
-    if (mod > 1850 && mod < 1960) return 'long';
+    if (gapConfig.gapScale <= 0) return null;
+
+    const mod = (worldX + seedOffset + (rail * gapConfig.railOffset)) % gapConfig.cycleLength;
+
+    const shortWidth = (gapConfig.shortEnd - gapConfig.shortStart) * gapConfig.gapScale;
+    if (mod > gapConfig.shortStart && mod < gapConfig.shortStart + shortWidth) {
+      return 'short';
+    }
+
+    const longWidth = (gapConfig.longEnd - gapConfig.longStart) * gapConfig.gapScale;
+    if (mod > gapConfig.longStart && mod < gapConfig.longStart + longWidth) {
+      return 'long';
+    }
+
     return null;
   }
 
@@ -150,7 +254,7 @@
   }
 
   function objectY(obj) {
-    return trackY(obj.x, obj.rail) + obj.side * 25;
+    return trackY(obj.x, obj.rail) + obj.side * 50;
   }
 
   function makeObject() {
@@ -170,9 +274,7 @@
     ctx.fillStyle = fill; ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill();
   }
 
-  // Fantasy-Hintergrund mit Parallax-Effekt für Tannen, Berge und Wolken
   function drawBackground() {
-    // 1. Magischer Abend-/Winterhimmel (Verlauf)
     const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
     skyGrad.addColorStop(0, '#091528');
     skyGrad.addColorStop(0.5, '#183863');
@@ -180,7 +282,6 @@
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, W, H);
 
-    // 2. Glitzernde Sterne & Schneeflocken im Hintergrund
     for (let i = 0; i < 80; i++) {
       let x = ((i * 137 - distance * 0.15) % W + W) % W;
       let y = (i * 59) % 320;
@@ -191,7 +292,6 @@
       ctx.fill();
     }
 
-    // 3. Ferne Wolkenschicht (langsam)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
     for (let i = 0; i < 5; i++) {
       let wx = ((i * 280 - distance * 0.25) % (W + 300) + W + 300) % (W + 300) - 150;
@@ -201,7 +301,6 @@
       ctx.fill();
     }
 
-    // 4. Entfernte schneebedeckte Bergkette
     ctx.fillStyle = '#27496d';
     ctx.beginPath();
     ctx.moveTo(0, 310);
@@ -211,7 +310,6 @@
     }
     ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
 
-    // 5. Nahe Tannenwald-Schicht (mittlere Tiefe)
     for (let i = 0; i < 16; i++) {
       let x = ((i * 90 - distance * 0.45) % (W + 120) + W + 120) % (W + 120) - 40;
       let y = 320 + (i % 4) * 18;
@@ -221,7 +319,6 @@
       ctx.lineTo(x - 32, y + 10);
       ctx.lineTo(x + 32, y + 10);
       ctx.fill();
-      // Schneekappe auf Tannen
       ctx.fillStyle = '#eaf6f8';
       ctx.beginPath();
       ctx.moveTo(x, y - 80);
@@ -230,7 +327,6 @@
       ctx.fill();
     }
 
-    // 6. Vorderster, sanfter Schneehügel (Hintergrund vor den Schienen)
     ctx.fillStyle = '#e3f3ff';
     ctx.beginPath();
     ctx.moveTo(0, 410);
@@ -272,16 +368,39 @@
     }
   }
 
-  function drawImageOrToken(obj, x, y) {
+function drawImageOrToken(obj, x, y) {
     const im = obj.image;
+    const radius = 36; // vorher 25 (Durchmesser 72px statt 50px)
+    const size = radius * 2;
+
     if (im && im.complete && im.naturalWidth) {
-      ctx.save(); ctx.beginPath(); ctx.arc(x, y, 25, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(im, x - 25, y - 25, 50, 50); ctx.restore();
-      ctx.strokeStyle = obj.good ? '#ffe27c' : '#ff7c83'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, 26, 0, Math.PI * 2); ctx.stroke();
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(im, x - radius, y - radius, size, size);
+      ctx.restore();
+
+      ctx.strokeStyle = obj.good ? '#ffe27c' : '#ff7c83';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(x, y, radius + 1, 0, Math.PI * 2);
+      ctx.stroke();
     } else {
-      ctx.save(); ctx.translate(x, y);
-      ctx.fillStyle = obj.good ? '#ffdc67' : '#e96e7a'; ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
-      ctx.font = '28px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(obj.good ? '★' : '✖', 0, 1); ctx.restore();
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = obj.good ? '#ffdc67' : '#e96e7a';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius - 1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.font = '36px system-ui';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(obj.good ? '★' : '✖', 0, 1);
+      ctx.restore();
     }
   }
 
@@ -289,18 +408,18 @@
     const p = positions[playerPos], y = currentY();
     ctx.save();
     ctx.translate(player.x, y);
-    
+
     if (fallingState) {
       ctx.rotate(fallingState.timer * 0.15);
     } else if (jumpState) {
       ctx.rotate(jumpState.progress * Math.PI * 0.5);
     } else {
-		 const slope = trackSlope(player.x, p.rail);
-		let angle = Math.atan(slope);
-		ctx.rotate(angle);
-		if (p.isHanging) {
-		  ctx.scale(1, -1); // <-- Das spiegelt den Schlitten sauber vertikal
-		}
+      const slope = trackSlope(player.x, p.rail);
+      let angle = Math.atan(slope);
+      ctx.rotate(angle);
+      if (p.isHanging) {
+        ctx.scale(1, -1);
+      }
     }
 
     if (customPlayerImg && customPlayerImg.complete && customPlayerImg.naturalWidth) {
@@ -355,16 +474,36 @@
       ctx.fillStyle = '#17334b';
       ctx.font = 'bold 15px system-ui';
       ctx.textAlign = 'left';
-      ctx.fillText(p.label, 18, 30);
+/*      ctx.fillText(p.label, 18, 30);*/
     }
   }
 
-  function update() {
+  function advanceWorld(horizontalSpeed, step) {
+    frame += step;
+    distance += horizontalSpeed * step;
+    speedDistance += horizontalSpeed * step;
+/*    distEl.textContent = Math.floor(distance / 10) + " Speed: " + Math.round(horizontalSpeed * 100) / 100; */
+
+    const spawnInterval = Math.max(25, Math.floor(55 - horizontalSpeed * 4));
+    spawnTimer += step;
+    if (spawnTimer >= spawnInterval) {
+      spawnTimer %= spawnInterval;
+      if (objects.length < 9) makeObject();
+    }
+
+    objects.forEach(o => o.x -= horizontalSpeed * step);
+    objects = objects.filter(o => o.x > -45);
+  }
+
+  function update(step) {
     if (!running) return;
+    if (hitSlowdown > 0) {
+      hitSlowdown = Math.max(0, hitSlowdown - 0.015 * step);
+    }
     const currentSpeed = getSpeed();
 
     if (jumpState) {
-      jumpState.progress += jumpState.isGapJump ? 0.055 : 0.15;
+      jumpState.progress += (jumpState.isGapJump ? 0.055 : 0.15) * step;
       if (jumpState.progress >= 1) {
         jumpState = null;
         activeGapJump = false;
@@ -372,25 +511,33 @@
     }
 
     if (fallingState) {
-      fallingState.y += fallingState.vy;
-      fallingState.vy += 0.6;
-      fallingState.timer++;
+      const fallHorizontalSpeed = fallingState.type === 'snow'
+        ? Math.max(2.0, currentSpeed * 0.65)
+        : currentSpeed;
+      advanceWorld(fallHorizontalSpeed, step);
+
+      fallingState.y += fallingState.vy * step;
+      fallingState.vy += 0.6 * step;
+      fallingState.timer += step;
 
       if (fallingState.type === 'lower') {
         const targetRailY = trackY(player.x, 0);
         if (fallingState.y >= targetRailY - 25) {
           playerPos = 1;
           fallingState = null;
-          msg.textContent = 'Puh! Auf der unteren Schiene gelandet!';
+/*          msg.textContent = 'Puh! Auf der unteren Schiene gelandet!'; */
         }
       } else if (fallingState.type === 'snow') {
         if (fallingState.y > H + 50) {
           running = false;
           fallingState = null;
+          hitSlowdown = 0;
+          spawnTimer = 0;
           score = 0;
-          scoreEl.textContent = score;
-          
+          updateScoreUI();
+
           distance = 0;
+          speedDistance = 0;
           objects = [];
           seedOffset = Math.random() * 10000;
           playerPos = 1;
@@ -400,17 +547,13 @@
           upBtn.disabled = true;
           downBtn.disabled = true;
           jumpBtn.disabled = true;
-          msg.textContent = 'In den Tiefschnee gestürzt! Neue Strecke bereit – klicke auf Los geht\'s.';
+          msg.textContent = 'Du bist leider im Tiefschnee gelandet! Bereit für eine neue Fahrt?';
         }
       }
       return;
     }
 
-    frame++; distance += currentSpeed; distEl.textContent = Math.floor(distance / 10);
-    if (frame % Math.max(25, Math.floor(55 - currentSpeed * 4)) === 0 && objects.length < 9) makeObject();
-    
-    objects.forEach(o => o.x -= currentSpeed);
-    objects = objects.filter(o => o.x > -45);
+    advanceWorld(currentSpeed, step);
 
     const p = positions[playerPos];
     const playerWorldX = player.x + distance;
@@ -433,29 +576,35 @@
     for (const o of objects) {
       const oy = objectY(o);
       if (!o.hit && Math.abs(o.x - player.x) < 38 &&
-         o.rail === p.rail && o.side === (p.isHanging ? 1 : -1) &&
-         Math.abs(oy - py) < 28) {
+          o.rail === p.rail && o.side === (p.isHanging ? 1 : -1) &&
+          Math.abs(oy - py) < 28) {
         o.hit = true;
         if (o.good) {
-          score = Math.min(20, score + 1);
-          msg.textContent = 'Gut gemacht! Ein Fundstück eingesammelt.';
+          score = Math.min(Ziel, score + 1);
+          msg.textContent = 'Ja - eine Disney-Figur nimmt in Deinem Schlitten Platz!';
         } else {
           score = 0;
-          msg.textContent = 'Auweia! Hindernis getroffen – weiter geht\'s!';
+          speedDistance = 0;
+          hitSlowdown = 0.35;
+          msg.textContent = 'Autsch - der Disney-Feind kickt alle Deine Freunde aus dem Schlitten ...';
         }
-        scoreEl.textContent = score;
-        if (score >= 20) {
+        updateScoreUI();
+        if (score >= Ziel) {
           won = true; running = false;
+          hitSlowdown = 0;
+          spawnTimer = 0;
           distance = 0;
+          speedDistance = 0;
           objects = [];
           seedOffset = Math.random() * 10000;
           playerPos = 1;
+          winOverlay.hidden = false;
           startBtn.textContent = 'Los geht\'s';
           startBtn.disabled = false;
           upBtn.disabled = true;
           downBtn.disabled = true;
           jumpBtn.disabled = true;
-          msg.textContent = 'Geschafft! Du hast 20 gute Bilder gesammelt!';
+          msg.textContent = 'Geschafft! Dein Schlitten ist voll!';
         }
       }
     }
@@ -465,10 +614,10 @@
     const p = positions[playerPos];
     if (p.rail === 1) {
       fallingState = { type: 'lower', y: currentY(), vy: 2, timer: 0 };
-      msg.textContent = customText || 'Abflug! Fall zur unteren Schiene...';
+/*      msg.textContent = customText || 'Abflug! Fall zur unteren Schiene...';*/
     } else {
       fallingState = { type: 'snow', y: currentY(), vy: 1, timer: 0 };
-      msg.textContent = customText || 'In den Tiefschnee gestürzt!';
+/*      msg.textContent = customText || 'In den Tiefschnee gestürzt!'; */
     }
   }
 
@@ -476,21 +625,31 @@
     drawBackground(); drawTracks();
     objects.forEach(o => { if (!o.hit) drawImageOrToken(o, o.x, objectY(o)); });
     drawPlayer();
-    roundedRect(W - 190, 18, 165, 14, 7, '#17334b99');
+/*    roundedRect(W - 190, 18, 165, 14, 7, '#17334b99');
     roundedRect(W - 190, 18, 165 * (score / 20), 14, 7, '#ffd66b');
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 13px system-ui'; ctx.textAlign = 'right'; ctx.fillText('ZIEL: 20', W - 25, 48);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 13px system-ui'; ctx.textAlign = 'right'; ctx.fillText('ZIEL: 20', W - 25, 48);*/
   }
 
-  function loop() { update(); draw(); requestAnimationFrame(loop); }
-  
+  function loop(now) {
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    const step = dt * 60;
+
+    update(step);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
   function startGame() {
-    running = true; won = false; fallingState = null; jumpState = null; activeGapJump = false;
+    lastTime = performance.now();
+    running = true; won = false; fallingState = null; jumpState = null; activeGapJump = false; hitSlowdown = 0; spawnTimer = 0;
+    winOverlay.hidden = true;
     startBtn.textContent = 'Läuft...';
     startBtn.disabled = true;
     upBtn.disabled = false;
     downBtn.disabled = false;
     jumpBtn.disabled = false;
-    msg.textContent = 'Fahrt gestartet! Viel Erfolg!';
+    msg.textContent = 'Huuiiii - viel Erfolg!';
   }
 
   function triggerLaneJump(newPos) {
@@ -507,7 +666,7 @@
     const targetY = startY;
     activeGapJump = true;
     jumpState = { startY, targetY, progress: 0, isGapJump: true };
-    msg.textContent = 'Perfekter Sprung über die kurze Lücke!';
+    msg.textContent = 'Wow - was für ein perfekter Sprung!';
   }
 
   function moveUp() { if (running && !fallingState && playerPos < 3) triggerLaneJump(playerPos + 1); }
@@ -517,7 +676,7 @@
   upBtn.addEventListener('click', moveUp);
   downBtn.addEventListener('click', moveDown);
   jumpBtn.addEventListener('click', triggerActionJump);
-  
+
   document.addEventListener('keydown', e => {
     if (!running) {
       if (e.key === ' ' || e.key === 'Enter') startGame();
@@ -528,17 +687,21 @@
     if (e.key === ' ' || e.key === 'j' || e.key === 'J') triggerActionJump();
   });
 
-  document.getElementById('restart').addEventListener('click', () => {
+  /* document.getElementById('restart').addEventListener('click', () => {
     running = false;
     fallingState = null;
     jumpState = null;
     activeGapJump = false;
+    hitSlowdown = 0;
+    spawnTimer = 0;
     score = 0;
     distance = 0;
+    speedDistance = 0;
     objects = [];
     seedOffset = Math.random() * 10000;
     playerPos = 1;
-    scoreEl.textContent = '0';
+    winOverlay.hidden = true;
+    updateScoreUI();
     distEl.textContent = '0';
     startBtn.textContent = 'Los geht\'s';
     startBtn.disabled = false;
@@ -546,10 +709,11 @@
     downBtn.disabled = true;
     jumpBtn.disabled = true;
     msg.textContent = 'Bereit? Klicke auf „Los geht\'s“, um die Fahrt zu starten!';
-  });
+  }); */
 
+  updateScoreUI();
   draw();
-  loop();
+  requestAnimationFrame(loop);
 })();
 </script>
 </body>
