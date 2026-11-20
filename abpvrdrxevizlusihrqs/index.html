@@ -110,7 +110,6 @@
     winOverlay = document.getElementById('winOverlay');
   const startBtn = document.getElementById('startBtn'), upBtn = document.getElementById('up'),
         downBtn = document.getElementById('down'), jumpBtn = document.getElementById('jumpBtn');
-  let  badImages = [];
   const defaultPlayerImg = new Image();
   defaultPlayerImg.src = 'TN3.png'; // Pfad oder Dateiname anpassen
   let customPlayerImg = defaultPlayerImg;
@@ -144,6 +143,22 @@
 	  'good/Nemo.jpg',
 	  'good/Simba.png'
 	]);
+	
+	 let badImages = createImages([
+		'bad/Kater.jpg',
+		'bad/Gloria.jpg',
+		'bad/Alex.jpg',
+		'bad/KungFuPanda.jpg',
+		'bad/BugsBunny.png',
+		'bad/Minion.jpg',
+		'bad/Neelix.jpg',
+		'bad/Worf.jpg',
+		'bad/Picard.jpg',
+		'bad/Fiona.jpg',
+		'bad/Donkey.jpg',
+		'bad/Shrek.jpg'
+	 ]);
+
 
   function loadFiles(input, target) {
     target.length = 0;
@@ -169,13 +184,13 @@
   ];
 
   const gapConfig = {
-    cycleLength: 1002700, // vorher 2200: größer = Lücken kommen seltener (mehr Strecke dazwischen)
+    cycleLength: 3500, // vorher 2200: größer = Lücken kommen seltener (mehr Strecke dazwischen)
     gapScale: 1,    // < 1.0 macht die Lücken selbst etwas schmaler; 0 = gar keine Lücken
     shortStart: 1300,
     shortEnd: 1380,
-    longStart: 1950,
-    longEnd: 2060,
-    railOffset: 500
+    longStart: 2150,
+    longEnd: 2260,
+    railOffset: 750
   };
 
   let playerPos = 1;
@@ -187,7 +202,7 @@
   let seedOffset = Math.random() * 10000;
   let lastTime = performance.now();
   let hitSlowdown = 0; // z. B. 0.35 -> bremst nach Treffer kurzzeitig zusätzlich ab
-  let Ziel = 1;
+  let Ziel = 19;
 
   function updateScoreUI() {
 /*    scoreEl.textContent = score; */
@@ -258,7 +273,7 @@
   }
 
   function makeObject() {
-    const good = Math.random() < 0.7, rail = Math.random() < 0.5 ? 0 : 1;
+    const good = Math.random() < 0.6, rail = Math.random() < 0.5 ? 0 : 1;
     const side = Math.random() < 0.5 ? -1 : 1;
     const worldX = W + distance;
     if (getRailGapType(worldX, rail)) return;
@@ -381,7 +396,7 @@ function drawImageOrToken(obj, x, y) {
       ctx.drawImage(im, x - radius, y - radius, size, size);
       ctx.restore();
 
-      ctx.strokeStyle = obj.good ? '#ffe27c' : '#ff7c83';
+      ctx.strokeStyle = obj.good ? '#ffe27c' : '#c4fa98';
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.arc(x, y, radius + 1, 0, Math.PI * 2);
@@ -604,7 +619,7 @@ function drawImageOrToken(obj, x, y) {
           upBtn.disabled = true;
           downBtn.disabled = true;
           jumpBtn.disabled = true;
-          msg.textContent = 'Geschafft! Dein Schlitten ist voll!';
+          msg.textContent = 'Geschafft! Dein Schlitten ist bis auf den letzten Sitzplatz voll!';
         }
       }
     }
