@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>19. Dezember</title>
+  <style>
+    :root {
+      --cols: 17;
+      --rows: 17;
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --cell-hidden: #162032;
+      --cell-current: #f59e0b;
+      --solution-bg: rgba(56, 189, 248, 0.24);
+      --solution-dot: #38bdf8;
+      --wall-color: #cbd5e1;
+      --open-glow: rgba(250, 204, 21, 0.22);
+      --entrance: #22c55e;
+      --exit: #ef4444;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+
+      --cell-size: clamp(13px, min(calc(88vw / var(--cols)), calc(50dvh / var(--rows))), 44px);
+      --wall-thickness: clamp(1.5px, calc(var(--cell-size) * 0.08), 3px);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(circle at top, #1e293b, var(--bg-dark));
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      gap: 10px;
+    }
+
+    header {
+      text-align: center;
+      max-width: 560px;
+      line-height: 1.4;
+      font-size: clamp(0.88rem, 3vw, 1rem);
+    }
+
+    .board-wrapper {
+      position: relative;
+      background: var(--card-bg);
+      padding: clamp(8px, 2.5vw, 14px);
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      touch-action: none;
+      overflow: hidden;
+    }
+
+    .grid {
+      display: grid;
+      gap: 0;
+      background: var(--bg-dark);
+      border: var(--wall-thickness) solid var(--wall-color);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .cell {
+      width: var(--cell-size);
+      height: var(--cell-size);
+      position: relative;
+      background: var(--cell-hidden);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: calc(var(--cell-size) * 0.28);
+      font-weight: 700;
+      user-select: none;
+    }
+
+    .cell.exit-cell {
+      cursor: pointer;
+    }
+
+    .cell.solution {
+      background: var(--solution-bg);
+    }
+
+    .solution-marker {
+      width: calc(var(--cell-size) * 0.28);
+      height: calc(var(--cell-size) * 0.28);
+      border-radius: 50%;
+      background: var(--solution-dot);
+      box-shadow: 0 0 6px rgba(56, 189, 248, 0.8);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .cell.current {
+      background: var(--open-glow);
+      box-shadow: inset 0 0 0 calc(var(--wall-thickness) * 0.7) var(--cell-current);
+    }
+
+    /* Graue Trennwände auf allen 4 Seiten */
+    .cell::before,
+    .cell::after,
+    .cell .wall-left,
+    .cell .wall-right {
+      content: "";
+      position: absolute;
+      background: var(--wall-color);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Oben */
+    .cell::before {
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--wall-thickness);
+    }
+
+    /* Unten */
+    .cell::after {
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--wall-thickness);
+    }
+
+    /* Links */
+    .cell .wall-left {
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: var(--wall-thickness);
+    }
+
+    /* Rechts */
+    .cell .wall-right {
+      top: 0;
+      bottom: 0;
+      right: 0;
+      width: var(--wall-thickness);
+    }
+
+    /* Aktive Türöffnung: überdeckt die graue Trennwand vollflächig in Orange */
+    .cell.current.active-top::before {
+      background: var(--cell-current);
+      height: calc(var(--wall-thickness) * 1.35);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.9);
+      z-index: 3;
+    }
+    .cell.current.active-bottom::after {
+      background: var(--cell-current);
+      height: calc(var(--wall-thickness) * 1.35);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.9);
+      z-index: 3;
+    }
+    .cell.current.active-left .wall-left {
+      background: var(--cell-current);
+      width: calc(var(--wall-thickness) * 1.35);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.9);
+      z-index: 3;
+    }
+    .cell.current.active-right .wall-right {
+      background: var(--cell-current);
+      width: calc(var(--wall-thickness) * 1.35);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.9);
+      z-index: 3;
+    }
+
+    .badge {
+      padding: 1px 2px;
+      border-radius: 3px;
+      color: #fff;
+      line-height: 1;
+      letter-spacing: 0.02em;
+      z-index: 2;
+    }
+
+    .badge-start {
+      background: var(--entrance);
+    }
+
+    .badge-end {
+      background: var(--exit);
+    }
+
+    .player {
+      width: calc(var(--cell-size) * 0.56);
+      height: calc(var(--cell-size) * 0.56);
+      border-radius: 50%;
+      background: var(--cell-current);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.85);
+      z-index: 4;
+      transition: transform 0.2s ease;
+    }
+
+    /* Benutzerdefinierte JPG-Grafiken für Spielfigur & Ausgang */
+    .custom-sprite {
+      width: calc(var(--cell-size) * 0.78);
+      height: calc(var(--cell-size) * 0.78);
+      object-fit: cover;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+
+    .player-img {
+      z-index: 4;
+      border-radius: 50%;
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.9);
+      border: 1.5px solid #fbbf24;
+      transition: transform 0.2s ease;
+    }
+
+    .exit-img {
+      z-index: 2;
+    }
+
+    .player-token.idle-pulse {
+      animation: playerIdleZoom 1.9s ease-in-out infinite;
+    }
+
+    @keyframes playerIdleZoom {
+      0%, 100% {
+        transform: scale(1);
+      }
+      45%, 55% {
+        transform: scale(2.35);
+      }
+    }
+
+    /* Gewinn-JPG über der Spielfläche */
+    .win-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(2px);
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      animation: fadeInWin 0.28s ease-out;
+    }
+
+    .win-overlay.show {
+      display: flex;
+    }
+
+    .win-overlay img {
+      max-width: 100%;
+      max-height: 100%;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 10px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+    }
+
+    .win-fallback-text {
+      background: rgba(34, 197, 94, 0.18);
+      border: 1px solid var(--entrance);
+      color: #bbf7d0;
+      padding: 14px 18px;
+      border-radius: 12px;
+      font-weight: 600;
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    @keyframes fadeInWin {
+      from {
+        opacity: 0;
+        transform: scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, 44px);
+      grid-template-rows: repeat(2, 38px);
+      gap: 6px;
+      justify-content: center;
+    }
+
+    .controls button {
+      background: #334155;
+      color: white;
+      border: none;
+      padding: 0;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: transform 0.1s ease, background 0.15s ease;
+    }
+
+    .controls button:hover {
+      background: #475569;
+    }
+
+    .controls button:active {
+      transform: scale(0.97);
+    }
+
+    .controls .up { grid-column: 2; grid-row: 1; }
+    .controls .left { grid-column: 1; grid-row: 2; }
+    .controls .down { grid-column: 2; grid-row: 2; }
+    .controls .right { grid-column: 3; grid-row: 2; }
+  </style>
+</head>
+<body>
+  <header>
+    Neunzehnter Dezember ... bei der rasanten Schlittenfahrt ist Scrat passiert, was natürlich unvermeidlich war ... er hat wieder mal seine Eichel verloren.
+    Kannst Du ihm den Weg zeigen und ihn zu seiner Eichel bringen?
+  </header>
+
+  <div class="board-wrapper" id="boardWrapper">
+    <div id="grid" class="grid" aria-label="Labyrinth-Spielfeld"></div>
+    <div id="winOverlay" class="win-overlay" aria-live="polite"></div>
+  </div>
+
+  <div class="controls" aria-label="Steuerung">
+    <button class="up" data-dir="top" type="button" title="Hoch">↑</button>
+    <button class="left" data-dir="left" type="button" title="Links">←</button>
+    <button class="down" data-dir="bottom" type="button" title="Runter">↓</button>
+    <button class="right" data-dir="right" type="button" title="Rechts">→</button>
+  </div>
+
+  <script>
+    // === KONFIGURATION ===
+    const ROWS = 17;
+    const COLS = 17;
+    const GATE_DURATION_MS = 1000;
+    const SOLUTION_UNLOCK_CLICKS = 17;
+    const IDLE_ZOOM_DELAY_MS = 6000;
+
+    // Hier Dateinamen oder URLs zu deinen JPG-Bildern eintragen (leer lassen = Standard-Symbole/Text):
+    const PLAYER_IMAGE_URL = "scrat.jpg";
+    const EXIT_IMAGE_URL = "Eichel.jpg";
+    const WIN_IMAGE_URL = "geschafft.jpg"; // <-- Dein JPG bei Erreichen der Eichel
+
+    const THREE_WAY_CHANCE = 0.45;
+    const CAP_AT_THREE = true;
+    const MIN_SOLUTION_STEPS = Math.floor(ROWS * COLS * 0.22);
+
+    document.documentElement.style.setProperty("--rows", ROWS);
+    document.documentElement.style.setProperty("--cols", COLS);
+
+    const START = { r: ROWS - 1, c: Math.max(1, Math.floor(COLS * 0.25)) };
+    const EXIT = { r: 0, c: Math.min(COLS - 2, Math.floor(COLS * 0.75)) };
+
+    const CLOCKWISE_DIRS = ["top", "right", "bottom", "left"];
+
+    const DIRS = {
+      top:    { dr: -1, dc: 0, opposite: "bottom" },
+      bottom: { dr:  1, dc: 0, opposite: "top" },
+      left:   { dr:  0, dc: -1, opposite: "right" },
+      right:  { dr:  0, dc: 1, opposite: "left" }
+    };
+
+    let maze = [];
+    let player = { r: START.r, c: START.c };
+    let seenCells = new Set();
+    let moves = 0;
+    let deadEndsHit = 0;
+    let won = false;
+
+    let exitClickCount = 0;
+    let showSolution = false;
+    let solutionSet = new Set();
+
+    let isPlayerIdleZoomed = false;
+    let idleTimerId = null;
+
+    let availableOpenings = [];
+    let activeOpeningIndex = 0;
+    let gateStartTime = performance.now();
+    let cycleTimerId = null;
+
+    const gridEl = document.getElementById("grid");
+    const boardWrapperEl = document.getElementById("boardWrapper");
+    const winOverlayEl = document.getElementById("winOverlay");
+
+    function key(r, c) {
+      return `${r},${c}`;
+    }
+
+    function resetIdleTimer() {
+      isPlayerIdleZoomed = false;
+      if (idleTimerId) {
+        clearTimeout(idleTimerId);
+        idleTimerId = null;
+      }
+
+      if (won) return;
+
+      idleTimerId = setTimeout(() => {
+        if (won) return;
+        isPlayerIdleZoomed = true;
+        const tokenEl = gridEl.querySelector(".player-token");
+        if (tokenEl) {
+          tokenEl.classList.add("idle-pulse");
+        }
+      }, IDLE_ZOOM_DELAY_MS);
+    }
+
+    function boostThreeWayCells(grid, rows, cols, threeWayChance, capAtThree) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const openings = CLOCKWISE_DIRS.filter((d) => grid[r][c][d]);
+
+          if (openings.length === 2 && Math.random() < threeWayChance) {
+            const closedCandidates = CLOCKWISE_DIRS.filter((dir) => {
+              if (grid[r][c][dir]) return false;
+              const nr = r + DIRS[dir].dr;
+              const nc = c + DIRS[dir].dc;
+              if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) return false;
+
+              if (capAtThree) {
+                const neighborOpenings = CLOCKWISE_DIRS.filter((d) => grid[nr][nc][d]).length;
+                if (neighborOpenings >= 3) return false;
+              }
+              return true;
+            });
+
+            if (closedCandidates.length > 0) {
+              const chosen = closedCandidates[Math.floor(Math.random() * closedCandidates.length)];
+              const nr = r + DIRS[chosen].dr;
+              const nc = c + DIRS[chosen].dc;
+              grid[r][c][chosen] = true;
+              grid[nr][nc][DIRS[chosen].opposite] = true;
+            }
+          }
+        }
+      }
+    }
+
+    function weightedShuffleDirs(lastDir) {
+      const weights = CLOCKWISE_DIRS.map((dir) => {
+        if (!lastDir) return Math.random();
+        if (dir === lastDir) return Math.random() * 0.25;
+        if (DIRS[dir].opposite === lastDir) return Math.random() * 0.4;
+        return Math.random() * 1.35;
+      });
+
+      return [...CLOCKWISE_DIRS]
+        .map((dir, i) => ({ dir, score: weights[i] }))
+        .sort((a, b) => b.score - a.score)
+        .map((item) => item.dir);
+    }
+
+    function buildSingleMazeCandidate(rows, cols) {
+      const grid = Array.from({ length: rows }, () =>
+        Array.from({ length: cols }, () => ({
+          top: false,
+          right: false,
+          bottom: false,
+          left: false
+        }))
+      );
+
+      const seen = Array.from({ length: rows }, () => Array(cols).fill(false));
+
+      function carve(r, c, lastDir = null) {
+        seen[r][c] = true;
+        const order = weightedShuffleDirs(lastDir);
+
+        for (const dir of order) {
+          const { dr, dc, opposite } = DIRS[dir];
+          const nr = r + dr;
+          const nc = c + dc;
+
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !seen[nr][nc]) {
+            grid[r][c][dir] = true;
+            grid[nr][nc][opposite] = true;
+            carve(nr, nc, dir);
+          }
+        }
+      }
+
+      carve(START.r, START.c, null);
+      boostThreeWayCells(grid, rows, cols, THREE_WAY_CHANCE, CAP_AT_THREE);
+
+      return grid;
+    }
+
+    function computeSolutionPath(grid, rows, cols) {
+      const queue = [{ r: START.r, c: START.c }];
+      const parent = new Map();
+      const visited = new Set([key(START.r, START.c)]);
+
+      while (queue.length > 0) {
+        const curr = queue.shift();
+        if (curr.r === EXIT.r && curr.c === EXIT.c) {
+          break;
+        }
+
+        for (const dir of CLOCKWISE_DIRS) {
+          if (!grid[curr.r][curr.c][dir]) continue;
+          const nr = curr.r + DIRS[dir].dr;
+          const nc = curr.c + DIRS[dir].dc;
+          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+
+          const nk = key(nr, nc);
+          if (!visited.has(nk)) {
+            visited.add(nk);
+            parent.set(nk, key(curr.r, curr.c));
+            queue.push({ r: nr, c: nc });
+          }
+        }
+      }
+
+      const pathSet = new Set();
+      let currKey = key(EXIT.r, EXIT.c);
+      if (!visited.has(currKey)) return pathSet;
+
+      while (currKey) {
+        pathSet.add(currKey);
+        currKey = parent.get(currKey) || null;
+      }
+
+      return pathSet;
+    }
+
+    function generateMazeWithWindingPath(rows, cols) {
+      let bestGrid = null;
+      let bestPath = new Set();
+
+      for (let attempt = 0; attempt < 25; attempt++) {
+        const candidate = buildSingleMazeCandidate(rows, cols);
+        const path = computeSolutionPath(candidate, rows, cols);
+        if (path.size > bestPath.size) {
+          bestPath = path;
+          bestGrid = candidate;
+        }
+        if (path.size >= MIN_SOLUTION_STEPS) {
+          return { grid: candidate, solutionPath: path };
+        }
+      }
+
+      return { grid: bestGrid, solutionPath: bestPath };
+    }
+
+    function getCellOpeningsClockwise(r, c) {
+      const cell = maze[r][c];
+      return CLOCKWISE_DIRS.filter((dir) => cell[dir]);
+    }
+
+    function getActiveOpeningDir() {
+      if (availableOpenings.length === 0) return null;
+      return availableOpenings[activeOpeningIndex % availableOpenings.length];
+    }
+
+    function startGateCycleForCurrentCell() {
+      if (cycleTimerId) {
+        clearInterval(cycleTimerId);
+        cycleTimerId = null;
+      }
+
+      availableOpenings = getCellOpeningsClockwise(player.r, player.c);
+      activeOpeningIndex = 0;
+      gateStartTime = performance.now();
+
+      if (won || availableOpenings.length <= 1) {
+        return;
+      }
+
+      cycleTimerId = setInterval(() => {
+        if (won) return;
+        activeOpeningIndex = (activeOpeningIndex + 1) % availableOpenings.length;
+        gateStartTime = performance.now();
+        render();
+      }, GATE_DURATION_MS);
+    }
+
+    function handleExitClick() {
+      if (showSolution) return;
+      exitClickCount += 1;
+      if (exitClickCount >= SOLUTION_UNLOCK_CLICKS) {
+        showSolution = true;
+        render();
+      }
+    }
+
+    function createExitElement() {
+      if (EXIT_IMAGE_URL && EXIT_IMAGE_URL.trim() !== "") {
+        const img = document.createElement("img");
+        img.src = EXIT_IMAGE_URL;
+        img.alt = "Ausgang";
+        img.className = "custom-sprite exit-img";
+        img.onerror = () => {
+          const fallback = document.createElement("span");
+          fallback.className = "badge badge-end";
+          fallback.textContent = "AUS";
+          img.replaceWith(fallback);
+        };
+        return img;
+      }
+
+      const badge = document.createElement("span");
+      badge.className = "badge badge-end";
+      badge.textContent = "AUS";
+      return badge;
+    }
+
+    function createPlayerElement() {
+      let el;
+      if (PLAYER_IMAGE_URL && PLAYER_IMAGE_URL.trim() !== "") {
+        const img = document.createElement("img");
+        img.src = PLAYER_IMAGE_URL;
+        img.alt = "Spielfigur";
+        img.title = "Deine Position";
+        img.className = "custom-sprite player-img player-token";
+        img.onerror = () => {
+          const fallback = document.createElement("div");
+          fallback.className = "player player-token";
+          fallback.title = "Deine Position";
+          if (isPlayerIdleZoomed) fallback.classList.add("idle-pulse");
+          img.replaceWith(fallback);
+        };
+        el = img;
+      } else {
+        const playerEl = document.createElement("div");
+        playerEl.className = "player player-token";
+        playerEl.title = "Deine Position";
+        el = playerEl;
+      }
+
+      if (isPlayerIdleZoomed) {
+        el.classList.add("idle-pulse");
+      }
+
+      return el;
+    }
+
+    function showWinOverlay() {
+      winOverlayEl.innerHTML = "";
+
+      if (WIN_IMAGE_URL && WIN_IMAGE_URL.trim() !== "") {
+        const img = document.createElement("img");
+        img.src = WIN_IMAGE_URL;
+        img.alt = "Scrat hat seine Eichel gefunden";
+        img.onerror = () => {
+          winOverlayEl.innerHTML = `<div class="win-fallback-text">🎉 Geschafft! Scrat hat seine Eichel wieder!</div>`;
+        };
+        winOverlayEl.appendChild(img);
+      } else {
+        winOverlayEl.innerHTML = `<div class="win-fallback-text">🎉 Geschafft! Scrat hat seine Eichel wieder!</div>`;
+      }
+
+      winOverlayEl.classList.add("show");
+    }
+
+    function initGame() {
+      const generated = generateMazeWithWindingPath(ROWS, COLS);
+      maze = generated.grid;
+      solutionSet = generated.solutionPath;
+
+      player = { r: START.r, c: START.c };
+      seenCells = new Set([key(player.r, player.c)]);
+      moves = 0;
+      deadEndsHit = 0;
+      won = false;
+      exitClickCount = 0;
+      showSolution = false;
+
+      winOverlayEl.classList.remove("show");
+      winOverlayEl.innerHTML = "";
+
+      resetIdleTimer();
+      startGateCycleForCurrentCell();
+      render();
+    }
+
+    function render() {
+      gridEl.style.gridTemplateColumns = `repeat(${COLS}, var(--cell-size))`;
+      gridEl.innerHTML = "";
+
+      const activeDir = getActiveOpeningDir();
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cellKey = key(r, c);
+          const cellEl = document.createElement("div");
+          cellEl.className = "cell";
+
+          const isExit = r === EXIT.r && c === EXIT.c;
+          if (isExit) {
+            cellEl.classList.add("exit-cell");
+            cellEl.addEventListener("click", handleExitClick);
+          }
+
+          if (showSolution && solutionSet.has(cellKey)) {
+            cellEl.classList.add("solution");
+          }
+
+          const wallLeft = document.createElement("span");
+          wallLeft.className = "wall-left";
+          const wallRight = document.createElement("span");
+          wallRight.className = "wall-right";
+          cellEl.appendChild(wallLeft);
+          cellEl.appendChild(wallRight);
+
+          const isCurrent = player.r === r && player.c === c;
+          if (isCurrent) {
+            cellEl.classList.add("current");
+            if (activeDir === "top") cellEl.classList.add("active-top");
+            if (activeDir === "bottom") cellEl.classList.add("active-bottom");
+            if (activeDir === "left") cellEl.classList.add("active-left");
+            if (activeDir === "right") cellEl.classList.add("active-right");
+          }
+
+          if (r === START.r && c === START.c && !isCurrent) {
+            const badge = document.createElement("span");
+            badge.className = "badge badge-start";
+            badge.textContent = "EIN";
+            cellEl.appendChild(badge);
+          } else if (isExit && !isCurrent) {
+            cellEl.appendChild(createExitElement());
+          } else if (showSolution && solutionSet.has(cellKey) && !isCurrent) {
+            const dot = document.createElement("span");
+            dot.className = "solution-marker";
+            cellEl.appendChild(dot);
+          }
+
+          if (isCurrent) {
+            cellEl.appendChild(createPlayerElement());
+          }
+
+          gridEl.appendChild(cellEl);
+        }
+      }
+    }
+
+    function move(dir) {
+      if (won || !DIRS[dir]) return;
+
+      const activeDir = getActiveOpeningDir();
+      if (dir !== activeDir) return;
+
+      const { dr, dc } = DIRS[dir];
+      const nr = player.r + dr;
+      const nc = player.c + dc;
+
+      if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return;
+
+      player = { r: nr, c: nc };
+      moves += 1;
+
+      resetIdleTimer();
+
+      const k = key(nr, nc);
+      const isFirstVisit = !seenCells.has(k);
+      seenCells.add(k);
+
+      const openingsCount = getCellOpeningsClockwise(nr, nc).length;
+      if (
+        isFirstVisit &&
+        !(nr === START.r && nc === START.c) &&
+        !(nr === EXIT.r && nc === EXIT.c) &&
+        openingsCount === 1
+      ) {
+        deadEndsHit += 1;
+      }
+
+      if (nr === EXIT.r && nc === EXIT.c) {
+        won = true;
+        isPlayerIdleZoomed = false;
+        if (idleTimerId) {
+          clearTimeout(idleTimerId);
+          idleTimerId = null;
+        }
+        if (cycleTimerId) {
+          clearInterval(cycleTimerId);
+          cycleTimerId = null;
+        }
+        showWinOverlay();
+      } else {
+        startGateCycleForCurrentCell();
+      }
+
+      render();
+    }
+
+    window.addEventListener("keydown", (e) => {
+      const map = {
+        ArrowUp: "top",
+        w: "top",
+        W: "top",
+        ArrowDown: "bottom",
+        s: "bottom",
+        S: "bottom",
+        ArrowLeft: "left",
+        a: "left",
+        A: "left",
+        ArrowRight: "right",
+        d: "right",
+        D: "right"
+      };
+      if (map[e.key]) {
+        e.preventDefault();
+        move(map[e.key]);
+      }
+    });
+
+    document.querySelectorAll(".controls button").forEach((btn) => {
+      btn.addEventListener("click", () => move(btn.dataset.dir));
+    });
+
+    let touchStartX = null;
+    let touchStartY = null;
+    const SWIPE_THRESHOLD = 18;
+
+    boardWrapperEl.addEventListener("touchstart", (e) => {
+      if (e.touches.length !== 1) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    boardWrapperEl.addEventListener("touchend", (e) => {
+      if (touchStartX === null || touchStartY === null || e.changedTouches.length === 0) return;
+
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+
+      touchStartX = null;
+      touchStartY = null;
+
+      if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) return;
+
+      if (Math.abs(dx) > Math.abs(dy)) {
+        move(dx > 0 ? "right" : "left");
+      } else {
+        move(dy > 0 ? "bottom" : "top");
+      }
+    }, { passive: true });
+
+    initGame();
+  </script>
+</body>
+</html>
